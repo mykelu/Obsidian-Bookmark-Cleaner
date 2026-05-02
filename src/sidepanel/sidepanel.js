@@ -1149,36 +1149,52 @@ if (btnCancelDelete) btnCancelDelete.addEventListener('click', () => deleteConfi
 
 if (btnConfirmDelete) {
   btnConfirmDelete.addEventListener('click', async () => {
-  if (pendingDeleteIds.length === 0) return;
+  if (pendingDeleteIds.length === 0) {
+    addLog('No pending IDs for deletion.', 'info');
+    return;
+  }
   btnConfirmDelete.disabled = true;
   btnConfirmDelete.textContent = 'Deleting...';
-  addLog(`Deleting ${pendingDeleteIds.length} bookmarks...`, 'system');
 
   // Use manual action if triggered from "Delete Selected", otherwise use policy-gated action
   const action = manualDeleteAction || 'DELETE_BOOKMARKS';
-  const r = await chrome.runtime.sendMessage({ action, ids: pendingDeleteIds, confirmed: true });
-  if (r.status === 'success') {
-    const deleted = (r.results || []).filter(x => x.action === 'deleted').length;
-    const failed = (r.results || []).filter(x => x.action === 'failed').length;
-    addLog(`Deleted: ${deleted}, Failed: ${failed}`, deleted > 0 ? 'success' : 'error');
-    
-    // Log backup info if available (for recovery)
-    if (r.backup && r.backup.length > 0) {
-      addLog(`Backup saved to console (${r.backup.length} items). Open DevTools > Console to copy if needed.`, 'info');
+  addLog(`Sending ${action} for ${pendingDeleteIds.length} bookmarks...`, 'system');
+
+  try {
+    const r = await chrome.runtime.sendMessage({ action, ids: pendingDeleteIds, confirmed: true });
+    if (!r) {
+      addLog('No response from service worker. Try reloading the extension.', 'error');
+    } else if (r.status === 'success') {
+      const deleted = (r.results || []).filter(x => x.action === 'deleted').length;
+      const failed = (r.results || []).filter(x => x.action === 'failed').length;
+      addLog(`Deleted: ${deleted}, Failed: ${failed}`, deleted > 0 ? 'success' : 'error');
+
+      // Log backup info if available (for recovery)
+      if (r.backup && r.backup.length > 0) {
+        addLog(`Backup saved to console (${r.backup.length} items). Open DevTools > Console to copy if needed.`, 'info');
+      }
+
+      if (r.allBookmarks) {
+        currentBookmarks = r.allBookmarks;
+      } else {
+        // Fallback: remove deleted IDs from local list
+        const removedSet = new Set((r.results || []).filter(x => x.action === 'deleted').map(x => x.id));
+        currentBookmarks = currentBookmarks.filter(b => !removedSet.has(b.id));
+      }
+      updateSummaryCounts(currentBookmarks);
+      renderList(currentBookmarks);
+    } else {
+      addLog(`Deletion failed: ${r.message}`, 'error');
     }
-    
-    currentBookmarks = r.allBookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-  } else {
-    addLog(`Deletion failed: ${r.message}`, 'error');
+  } catch (err) {
+    addLog(`Deletion error: ${err.message}`, 'error');
   }
 
   pendingDeleteIds = [];
   manualDeleteAction = null;
   btnConfirmDelete.disabled = false;
-  btnConfirmDelete.textContent = 'Yes, Delete Permanently';
-  deleteConfirmModal.close();
+  btnConfirmDelete.textContent = 'Permanently Delete';
+  if (deleteConfirmModal) deleteConfirmModal.close();
 });
 }
 
