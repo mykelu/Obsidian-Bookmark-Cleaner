@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-05-03
+### Added
+- **Workflow Recommendation Tip**: Context-aware guidance in the Review tab that suggests the next logical step (Scan -> Check -> Extract -> Capture).
+- **Intelligent Bulk Actions**: Extract, Capture, and Delete buttons now show eligible counts and only enable when relevant items are selected.
+- **Review Status Strip**: Added a persistent progress bar and status badge summary for quick data oversight.
+- **Safe Staging (Chrome Folders)**: Grouped and clarified folder-based tools as a "Safe Staging" workflow to differentiate from permanent deletion.
+### Fixed
+- **Deletion Reliability**: Hardened the delete confirmation flow with robust logging, error handling, and a state-sync fallback.
+- **Scan Merging**: Improved full scans to merge with existing data, preserving enrichment results (links/extraction) and preventing redundant work.
+- **Startup Restore**: The extension now automatically restores the previous session state and Review UI on launch.
+
 ## [1.1.0] - 2026-05-03
 ### Added
 - **Delete Selected**: New button in the Review tab to delete user-reviewed bookmarks with a confirmation modal. Bypasses the 21-day/3-check auto-candidate policy since the user has manually reviewed the items.
