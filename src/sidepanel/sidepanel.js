@@ -275,6 +275,15 @@ async function checkServiceWorkerHealth(isManual = false) {
       if (response.hasBookmarks) {
         currentBookmarks = response.bookmarks || [];
         updateSummaryCounts(currentBookmarks);
+        
+        // Auto-activate Review tab UI with existing data
+        if (currentBookmarks.length > 0) {
+          if (statusFiltersContainer) statusFiltersContainer.style.display = 'block';
+          if (bulkActions) bulkActions.style.display = 'flex';
+          if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
+          renderList(currentBookmarks);
+          if (!isManual) addLog(`Restored ${currentBookmarks.length} bookmarks from previous session.`, 'info');
+        }
       }
     } else {
       swStatusChip.className = 'status-chip error';
@@ -334,7 +343,10 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
       rootId: rootId
     });
     if (response.status === 'success') {
-      addLog(`Scan complete: found ${response.total} bookmarks.`, 'success');
+      const checkedMsg = response.alreadyChecked > 0 
+        ? ` (${response.alreadyChecked} previously checked — results preserved)` 
+        : '';
+      addLog(`Scan complete: found ${response.total} bookmarks.${checkedMsg}`, 'success');
       
       // Update Summary
       if (scanSummary) scanSummary.style.display = 'block';

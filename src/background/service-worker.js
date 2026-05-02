@@ -150,25 +150,62 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'SCAN_BOOKMARKS') {
     state.isScanning = true;
     state.isBusy = true;
-    scanBookmarksTree(message.rootId).then(async (bookmarks) => {
-      state.bookmarks = bookmarks;
+    scanBookmarksTree(message.rootId).then(async (freshBookmarks) => {
+      // Build a lookup of existing bookmark data to preserve enrichment
+      const existingById = {};
+      const existingByUrl = {};
+      for (const b of state.bookmarks) {
+        existingById[b.id] = b;
+        existingByUrl[b.url] = b;
+      }
+
+      // Merge: preserve previously gathered data for known bookmarks
+      const merged = freshBookmarks.map(fresh => {
+        const existing = existingById[fresh.id] || existingByUrl[fresh.url];
+        if (existing) {
+          return {
+            ...fresh,
+            status: existing.status || fresh.status,
+            httpStatus: existing.httpStatus,
+            error: existing.error,
+            finalUrl: existing.finalUrl,
+            attempts: existing.attempts || 0,
+            firstChecked: existing.firstChecked,
+            lastChecked: existing.lastChecked,
+            extractedData: existing.extractedData,
+            extractionStatus: existing.extractionStatus,
+            captureStatus: existing.captureStatus,
+            capturedAt: existing.capturedAt,
+            capturedNotePath: existing.capturedNotePath,
+            capturedContentHash: existing.capturedContentHash
+          };
+        }
+        return fresh;
+      });
+
+      state.bookmarks = merged;
+      state.lastScannedAt = new Date().toISOString();
       state.isScanning = false;
       state.isBusy = false;
 
       // Calculate summary stats
       const folderStats = {};
-      bookmarks.forEach(b => {
+      merged.forEach(b => {
         folderStats[b.folderPath] = (folderStats[b.folderPath] || 0) + 1;
       });
 
+      const alreadyChecked = merged.filter(b => b.status && b.status !== 'pending').length;
+
       // Persist
-      await saveBookmarksNow(bookmarks);
+      await saveBookmarksNow(merged);
 
       sendResponse({
         status: 'success',
-        total: bookmarks.length,
+        total: merged.length,
+        alreadyChecked,
+        lastScannedAt: state.lastScannedAt,
         folderStats,
-        bookmarks
+        bookmarks: merged
       });
     }).catch(err => {
       state.isScanning = false;
