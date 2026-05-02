@@ -639,12 +639,15 @@ if (captureSelectedBtn) {
     currentBookmarks = response.allBookmarks;
     renderList(currentBookmarks);
     
-    const created = response.results.filter(r => r.action === 'created').length;
-    const updated = response.results.filter(r => r.action === 'updated').length;
-    const skipped = response.results.filter(r => r.action === 'skipped').length;
-    const failed = response.results.filter(r => r.action === 'failed').length;
-    
-    addLog(`Capture complete: ${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed.`, 'success');
+    if (response.results) {
+      const created = response.results.filter(r => r.action === 'created').length;
+      const updated = response.results.filter(r => r.action === 'updated').length;
+      const skipped = response.results.filter(r => r.action === 'skipped').length;
+      const failed = response.results.filter(r => r.action === 'failed').length;
+      addLog(`Capture complete: ${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed.`, 'success');
+    } else {
+      addLog('Capture complete.', 'success');
+    }
   } else {
     addLog(`Capture error: ${response.message}`, 'error');
   }
@@ -1114,8 +1117,8 @@ if (btnConfirmDelete) {
   const action = manualDeleteAction || 'DELETE_BOOKMARKS';
   const r = await chrome.runtime.sendMessage({ action, ids: pendingDeleteIds, confirmed: true });
   if (r.status === 'success') {
-    const deleted = r.results.filter(x => x.action === 'deleted').length;
-    const failed = r.results.filter(x => x.action === 'failed').length;
+    const deleted = (r.results || []).filter(x => x.action === 'deleted').length;
+    const failed = (r.results || []).filter(x => x.action === 'failed').length;
     addLog(`Deleted: ${deleted}, Failed: ${failed}`, deleted > 0 ? 'success' : 'error');
     
     // Log backup info if available (for recovery)
