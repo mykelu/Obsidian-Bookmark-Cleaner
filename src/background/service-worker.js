@@ -132,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Service Worker] Received message:', message.action);
 
   if (message.action === 'HEALTH_CHECK') {
-    const pendingJobs = state.activeQueue ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
+    const pendingJobs = (state.activeQueue && state.activeQueue.items) ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
     sendResponse({
       ok: true,
       status: 'ok', // for backward compatibility

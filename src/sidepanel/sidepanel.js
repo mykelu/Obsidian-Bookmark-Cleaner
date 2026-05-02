@@ -537,7 +537,8 @@ function renderList(bookmarks) {
 }
 
 // Write to Obsidian from note preview modal
-btnCaptureFromPreview.addEventListener('click', async () => {
+if (btnCaptureFromPreview) {
+  btnCaptureFromPreview.addEventListener('click', async () => {
   if (!notePreviewCurrentId) return;
   
   btnCaptureFromPreview.disabled = true;
@@ -565,7 +566,8 @@ btnCaptureFromPreview.addEventListener('click', async () => {
 });
 
 // Bulk Extract logic
-extractSelectedBtn.addEventListener('click', async () => {
+if (extractSelectedBtn) {
+  extractSelectedBtn.addEventListener('click', async () => {
   const selected = document.querySelectorAll('.bookmark-select:checked');
   const ids = Array.from(selected).map(cb => cb.getAttribute('data-id'));
   if (ids.length === 0) return;
@@ -588,7 +590,8 @@ extractSelectedBtn.addEventListener('click', async () => {
 });
 
 // Bulk Capture logic
-captureSelectedBtn.addEventListener('click', async () => {
+if (captureSelectedBtn) {
+  captureSelectedBtn.addEventListener('click', async () => {
   const selected = document.querySelectorAll('.bookmark-select:checked');
   const ids = Array.from(selected).map(cb => cb.getAttribute('data-id'));
   if (ids.length === 0) {
@@ -766,7 +769,8 @@ if (checkLinksBtn) checkLinksBtn.addEventListener('click', async () => {
   checkLinksBtn.textContent = 'Check Links';
 });
 
-recheckBrokenBtn.addEventListener('click', async () => {
+if (recheckBrokenBtn) {
+  recheckBrokenBtn.addEventListener('click', async () => {
   addLog('Rechecking soft-broken links...', 'system');
   if (recheckBrokenBtn) {
     recheckBrokenBtn.disabled = true;
@@ -831,7 +835,8 @@ async function runDiagnostics(baseUrl, apiKey) {
   return results;
 }
 
-obsTestBtn.addEventListener('click', async () => {
+if (obsTestBtn) {
+  obsTestBtn.addEventListener('click', async () => {
   const settings = saveObsidianSettings();
   addLog(`Running detailed diagnostics for ${settings.baseUrl}...`, 'system');
   
@@ -872,7 +877,8 @@ obsTestBtn.addEventListener('click', async () => {
   }
 });
 
-obsSampleBtn.addEventListener('click', async () => {
+if (obsSampleBtn) {
+  obsSampleBtn.addEventListener('click', async () => {
   if (!currentBookmarks.length) {
     addLog("No bookmarks available. Run a bookmark scan first.", 'error');
     return;
@@ -944,13 +950,15 @@ function updateQueueUI(p) {
   resumeQueueBtn.disabled = !p.paused;
 }
 
-pauseQueueBtn.addEventListener('click', async () => {
+if (pauseQueueBtn) {
+  pauseQueueBtn.addEventListener('click', async () => {
   const r = await chrome.runtime.sendMessage({ action: 'PAUSE_QUEUE' });
   if (r.status === 'success') { updateQueueUI(r.progress); addLog('Queue paused.', 'system'); }
   else addLog(`Pause failed: ${r.message}`, 'error');
 });
 
-resumeQueueBtn.addEventListener('click', async () => {
+if (resumeQueueBtn) {
+  resumeQueueBtn.addEventListener('click', async () => {
   addLog('Resuming queue...', 'system');
   startQueuePolling();
   const r = await chrome.runtime.sendMessage({ action: 'RESUME_QUEUE' });
@@ -967,7 +975,8 @@ resumeQueueBtn.addEventListener('click', async () => {
 
 // ── Phase 8: Scheduled Rechecks ────────────────────────────────────
 
-scheduleRecheckBtn.addEventListener('click', async () => {
+if (scheduleRecheckBtn) {
+  scheduleRecheckBtn.addEventListener('click', async () => {
   const mins = parseInt(recheckIntervalSelect.value);
   const r = await chrome.runtime.sendMessage({ action: 'SCHEDULE_RECHECK', intervalMinutes: mins });
   if (r.status === 'success') {
@@ -976,7 +985,8 @@ scheduleRecheckBtn.addEventListener('click', async () => {
   }
 });
 
-cancelRecheckBtn.addEventListener('click', async () => {
+if (cancelRecheckBtn) {
+  cancelRecheckBtn.addEventListener('click', async () => {
   await chrome.runtime.sendMessage({ action: 'CANCEL_RECHECK' });
   recheckStatusEl.textContent = 'No recheck scheduled.';
   addLog('Recheck alarm cancelled.', 'system');
@@ -996,7 +1006,8 @@ cancelRecheckBtn.addEventListener('click', async () => {
 
 // ── Phase 8: Delete Candidate Review ───────────────────────────────
 
-viewDeleteCandidatesBtn.addEventListener('click', async () => {
+if (viewDeleteCandidatesBtn) {
+  viewDeleteCandidatesBtn.addEventListener('click', async () => {
   const r = await chrome.runtime.sendMessage({ action: 'GET_DELETE_CANDIDATES' });
   if (r.status === 'success') {
     if (r.candidates.length === 0) {
@@ -1014,10 +1025,11 @@ viewDeleteCandidatesBtn.addEventListener('click', async () => {
   }
 });
 
-btnCloseDeleteModal.addEventListener('click', () => deleteConfirmModal.close());
-btnCancelDelete.addEventListener('click', () => deleteConfirmModal.close());
+if (btnCloseDeleteModal) btnCloseDeleteModal.addEventListener('click', () => deleteConfirmModal && deleteConfirmModal.close());
+if (btnCancelDelete) btnCancelDelete.addEventListener('click', () => deleteConfirmModal && deleteConfirmModal.close());
 
-btnConfirmDelete.addEventListener('click', async () => {
+if (btnConfirmDelete) {
+  btnConfirmDelete.addEventListener('click', async () => {
   if (pendingDeleteIds.length === 0) return;
   btnConfirmDelete.disabled = true;
   btnConfirmDelete.textContent = 'Deleting...';
@@ -1043,7 +1055,8 @@ btnConfirmDelete.addEventListener('click', async () => {
 
 // ── Phase 8: Clear Logs ────────────────────────────────────────────
 
-clearLogsBtn.addEventListener('click', () => {
+if (clearLogsBtn) {
+  clearLogsBtn.addEventListener('click', () => {
   logContainer.innerHTML = '';
   addLog('Logs cleared.', 'system');
 });
