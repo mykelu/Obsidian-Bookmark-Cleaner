@@ -207,9 +207,14 @@
           </select>
         </div>
 
-        <div id="review-cleanup-actions" class="actions" style="display: none; margin-bottom: 12px;">
-          <button id="btn-setup-folders" class="btn-secondary" title="Create safe review folders in Chrome">Setup Review Folders</button>
-          <button id="btn-move-dupes" class="btn-secondary" title="Move duplicates to the review folder">Move Duplicates</button>
+        <!-- Safe Staging (Chrome Folders) -->
+        <div id="review-cleanup-actions" class="actions" style="display: none; margin-bottom: 12px; background: #e8f0fe; padding: 12px; border-radius: 8px; border: 1px solid #c2e7ff;">
+          <div style="font-size: 11px; font-weight: 700; margin-bottom: 8px; color: #1a73e8;">🛡️ Safe Staging (Chrome Folders)</div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btn-setup-folders" class="btn-secondary" style="font-size: 11px;" title="Create safe review folders in Chrome">1. Setup Folders</button>
+            <button id="btn-move-dupes" class="btn-secondary" style="font-size: 11px;" title="Move selected bookmarks to Chrome review folder">2. Move Selected to Staging</button>
+          </div>
+          <div style="font-size: 10px; color: #666; margin-top: 6px;">Moves items to a folder instead of deleting them.</div>
         </div>
 
         <!-- Bulk Actions -->

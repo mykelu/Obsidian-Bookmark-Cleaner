@@ -712,6 +712,10 @@ function updateBulkActionButtons() {
     btnDeleteSelected.disabled = canDeleteCount === 0;
     btnDeleteSelected.innerHTML = `Delete Selected ${canDeleteCount > 0 ? `(${canDeleteCount})` : ''}`;
   }
+  if (moveDupesBtn) {
+    moveDupesBtn.disabled = canDeleteCount === 0;
+    moveDupesBtn.innerHTML = `2. Move Selected to Staging ${canDeleteCount > 0 ? `(${canDeleteCount})` : ''}`;
+  }
 }
 
 // Delete Selected button logic
