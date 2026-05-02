@@ -143,7 +143,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       message: state.isBusy ? 'Processing queue...' : 'Idle',
       state: state.settings,
       hasBookmarks: state.bookmarks.length > 0,
-      hasQueue: !!state.activeQueue && !isComplete(state.activeQueue)
+      hasQueue: !!state.activeQueue && !isComplete(state.activeQueue),
+      isBusy: state.isBusy,
+      isScanning: state.isScanning
     });
   }
 

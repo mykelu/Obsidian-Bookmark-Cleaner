@@ -291,6 +291,13 @@ async function checkServiceWorkerHealth(isManual = false) {
           if (!isManual) addLog(`Restored ${currentBookmarks.length} bookmarks from previous session.`, 'info');
         }
       }
+
+      // Proactively handle busy state
+      if (response.isBusy || response.isScanning) {
+        setGlobalBusy(true, response.isScanning ? 'Scanning...' : 'Background Busy...');
+      } else {
+        setGlobalBusy(false);
+      }
     } else {
       swStatusChip.className = 'status-chip error';
       swStatusChip.textContent = 'Error';
@@ -339,8 +346,7 @@ if (btnToggleLogs) btnToggleLogs.addEventListener('click', () => {
 // Scan Bookmarks Logic
 if (scanBtn) scanBtn.addEventListener('click', async () => {
   const rootId = (scanFolderRoot && scanFolderRoot.value) ? scanFolderRoot.value : null;
-  scanBtn.disabled = true;
-  scanBtn.textContent = 'Scanning...';
+  setGlobalBusy(true, 'Scanning...');
   addLog(`Starting ${rootId ? 'folder' : 'full'} bookmark scan...`, 'system');
   
   try {
@@ -389,10 +395,7 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
   } catch (error) {
     addLog(`Scan error: ${error.message}`, 'error');
   } finally {
-    if (scanBtn) {
-      scanBtn.disabled = false;
-      scanBtn.textContent = 'Start Scan';
-    }
+    setGlobalBusy(false);
   }
 });
 
@@ -624,8 +627,7 @@ if (extractSelectedBtn) {
   const ids = Array.from(selected).map(cb => cb.getAttribute('data-id'));
   if (ids.length === 0) return;
   
-  extractSelectedBtn.disabled = true;
-  extractSelectedBtn.textContent = 'Extracting...';
+  setGlobalBusy(true, 'Extracting...');
   addLog(`Sending ${ids.length} bookmarks for batch extraction...`, 'info');
   
   const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids });
@@ -638,8 +640,7 @@ if (extractSelectedBtn) {
     addLog(`Batch extraction error: ${response.message}`, 'error');
   }
   
-  extractSelectedBtn.disabled = false;
-  updateBulkActionButtons();
+  setGlobalBusy(false);
 });
 }
 
@@ -653,8 +654,7 @@ if (captureSelectedBtn) {
     return;
   }
   
-  captureSelectedBtn.disabled = true;
-  captureSelectedBtn.textContent = 'Capturing...';
+  setGlobalBusy(true, 'Capturing...');
   addLog(`Capturing ${ids.length} bookmarks to Obsidian...`, 'info');
   
   const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids });
@@ -676,8 +676,7 @@ if (captureSelectedBtn) {
     addLog(`Capture error: ${response.message}`, 'error');
   }
   
-  captureSelectedBtn.disabled = false;
-  updateBulkActionButtons();
+  setGlobalBusy(false);
 });
 }
 
@@ -915,8 +914,7 @@ if (checkLinksBtn) checkLinksBtn.addEventListener('click', async () => {
   const limit = checkBatchLimit ? parseInt(checkBatchLimit.value) : 0;
   addLog(`Starting link check (limit: ${limit || 'All'})...`, 'system');
   
-  checkLinksBtn.disabled = true;
-  checkLinksBtn.textContent = 'Checking...';
+  setGlobalBusy(true, 'Checking...');
   startQueuePolling();
   
   const response = await chrome.runtime.sendMessage({ 
@@ -924,6 +922,8 @@ if (checkLinksBtn) checkLinksBtn.addEventListener('click', async () => {
     limit: limit
   });
   stopQueuePolling();
+  setGlobalBusy(false);
+
   if (response.status === 'success') {
     addLog('Finished checking links.', 'success');
     currentBookmarks = response.bookmarks;
@@ -1102,6 +1102,29 @@ function startQueuePolling() {
       if (r.status === 'success') updateQueueUI(r.progress);
     } catch (e) { /* SW may be restarting */ }
   }, 2000);
+}
+
+function setGlobalBusy(isBusy, text) {
+  if (scanBtn) {
+    scanBtn.disabled = isBusy;
+    if (isBusy && text) scanBtn.textContent = text;
+    else if (!isBusy) scanBtn.textContent = 'Start Scan';
+  }
+  if (checkLinksBtn) {
+    checkLinksBtn.disabled = isBusy;
+    checkLinksBtn.textContent = isBusy ? 'Busy...' : 'Check Links';
+  }
+  if (recheckBrokenBtn) recheckBrokenBtn.disabled = isBusy;
+  if (extractSelectedBtn) extractSelectedBtn.disabled = isBusy;
+  if (captureSelectedBtn) captureSelectedBtn.disabled = isBusy;
+  if (moveDupesBtn) moveDupesBtn.disabled = isBusy;
+  if (btnDeleteSelected) btnDeleteSelected.disabled = isBusy;
+
+  // If we are un-busying, we should re-run our intelligent button update 
+  // to ensure bulk buttons are enabled only if items are selected.
+  if (!isBusy) {
+    updateBulkActionButtons();
+  }
 }
 
 function stopQueuePolling() {
