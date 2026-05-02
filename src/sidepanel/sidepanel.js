@@ -289,6 +289,16 @@ async function checkServiceWorkerHealth(isManual = false) {
     }
     swLatencyEl.textContent = '—';
     addLog(`Health check info: ${error.message}`, 'info');
+  } finally {
+    // Always restore buttons after check completes
+    if (healthCheckBtn) {
+      healthCheckBtn.disabled = false;
+      healthCheckBtn.textContent = 'Refresh Worker Status';
+    }
+    if (btnHealthCheckSimple) {
+      btnHealthCheckSimple.disabled = false;
+      btnHealthCheckSimple.textContent = 'Refresh Worker Status';
+    }
   }
 }
 
