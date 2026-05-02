@@ -305,7 +305,7 @@ if (btnToggleLogs) btnToggleLogs.addEventListener('click', () => {
 
 // Scan Bookmarks Logic
 if (scanBtn) scanBtn.addEventListener('click', async () => {
-  const rootId = scanFolderRoot.value || null;
+  const rootId = (scanFolderRoot && scanFolderRoot.value) ? scanFolderRoot.value : null;
   scanBtn.disabled = true;
   scanBtn.textContent = 'Scanning...';
   addLog(`Starting ${rootId ? 'folder' : 'full'} bookmark scan...`, 'system');
@@ -319,32 +319,34 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
       addLog(`Scan complete: found ${response.total} bookmarks.`, 'success');
       
       // Update Summary
-      scanSummary.style.display = 'block';
-      summaryTotal.textContent = response.total;
+      if (scanSummary) scanSummary.style.display = 'block';
+      if (summaryTotal) summaryTotal.textContent = response.total;
       
-      summaryFolders.innerHTML = '';
-      for (const [folder, count] of Object.entries(response.folderStats)) {
-        const li = document.createElement('li');
-        li.textContent = `${folder}: ${count}`;
-        summaryFolders.appendChild(li);
+      if (summaryFolders) {
+        summaryFolders.innerHTML = '';
+        for (const [folder, count] of Object.entries(response.folderStats)) {
+          const li = document.createElement('li');
+          li.textContent = `${folder}: ${count}`;
+          summaryFolders.appendChild(li);
+        }
       }
       
       currentBookmarks = response.bookmarks;
-      statusFiltersContainer.style.display = 'block';
-      bulkActions.style.display = 'flex';
-      reviewCleanupActions.style.display = 'block';
+      if (statusFiltersContainer) statusFiltersContainer.style.display = 'block';
+      if (bulkActions) bulkActions.style.display = 'flex';
+      if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
       updateSummaryCounts(currentBookmarks);
       renderList(currentBookmarks);
       
       // Enable secondary actions
-      dedupeBtn.disabled = false;
-      exportJsonBtn.disabled = false;
-      exportCsvBtn.disabled = false;
-      checkLinksBtn.disabled = false;
-      recheckBrokenBtn.disabled = false;
-      extractSelectedBtn.disabled = false;
-      captureSelectedBtn.disabled = false;
-      viewDeleteCandidatesBtn.disabled = false;
+      if (dedupeBtn) dedupeBtn.disabled = false;
+      if (exportJsonBtn) exportJsonBtn.disabled = false;
+      if (exportCsvBtn) exportCsvBtn.disabled = false;
+      if (checkLinksBtn) checkLinksBtn.disabled = false;
+      if (recheckBrokenBtn) recheckBrokenBtn.disabled = false;
+      if (extractSelectedBtn) extractSelectedBtn.disabled = false;
+      if (captureSelectedBtn) captureSelectedBtn.disabled = false;
+      if (viewDeleteCandidatesBtn) viewDeleteCandidatesBtn.disabled = false;
       
     } else {
       addLog(`Scan failed: ${response.message}`, 'error');
@@ -352,8 +354,10 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
   } catch (error) {
     addLog(`Scan error: ${error.message}`, 'error');
   } finally {
-    scanBtn.disabled = false;
-    scanBtn.textContent = 'Start Scan';
+    if (scanBtn) {
+      scanBtn.disabled = false;
+      scanBtn.textContent = 'Start Scan';
+    }
   }
 });
 
@@ -616,15 +620,16 @@ captureSelectedBtn.addEventListener('click', async () => {
 });
 
 function updateSummaryCounts(bookmarks) {
+  if (!bookmarks) return;
   const counts = { healthy: 0, redirected: 0, duplicate: 0, 'soft-broken': 0, 'hard-broken': 0, pending: 0 };
   bookmarks.forEach(b => {
     counts[b.status] = (counts[b.status] || 0) + 1;
   });
   
-  summaryTotal.textContent = bookmarks.length;
+  if (summaryTotal) summaryTotal.textContent = bookmarks.length;
   // Let's create a dynamic breakdown element if it doesn't exist
   let breakdown = document.getElementById('summary-breakdown');
-  if (!breakdown) {
+  if (!breakdown && scanSummary) {
     breakdown = document.createElement('div');
     breakdown.id = 'summary-breakdown';
     breakdown.style.fontSize = '12px';
@@ -632,13 +637,15 @@ function updateSummaryCounts(bookmarks) {
     scanSummary.appendChild(breakdown);
   }
   
-  breakdown.innerHTML = `
-    <span class="badge badge-healthy">Healthy: ${counts.healthy}</span>
-    <span class="badge badge-redirected">Redirected: ${counts.redirected}</span>
-    <span class="badge badge-soft-broken">Soft-Broken: ${counts['soft-broken']}</span>
-    <span class="badge badge-hard-broken">Hard-Broken: ${counts['hard-broken']}</span>
-    <span class="badge badge-duplicate">Duplicates: ${counts.duplicate}</span>
-  `;
+  if (breakdown) {
+    breakdown.innerHTML = `
+      <span class="badge badge-healthy">Healthy: ${counts.healthy}</span>
+      <span class="badge badge-redirected">Redirected: ${counts.redirected}</span>
+      <span class="badge badge-soft-broken">Soft-Broken: ${counts['soft-broken']}</span>
+      <span class="badge badge-hard-broken">Hard-Broken: ${counts['hard-broken']}</span>
+      <span class="badge badge-duplicate">Duplicates: ${counts.duplicate}</span>
+    `;
+  }
 }
 
 // Filter status dropdown triggers a re-render
@@ -845,19 +852,23 @@ obsTestBtn.addEventListener('click', async () => {
   }
 
   if (allPassed) {
-    diagSummary.textContent = 'All diagnostics passed! Ready to create notes.';
-    diagSummary.className = 'summary-text success';
+    if (diagSummary) {
+      diagSummary.textContent = 'All diagnostics passed! Ready to create notes.';
+      diagSummary.className = 'summary-text success';
+    }
     addLog('Obsidian diagnostics passed.', 'success');
     
     // Enable sample note button if we have bookmarks
-    if (currentBookmarks.length > 0) {
+    if (currentBookmarks.length > 0 && obsSampleBtn) {
       obsSampleBtn.disabled = false;
     }
   } else {
-    diagSummary.textContent = 'Diagnostics failed. Please fix the issues above and try again.';
-    diagSummary.className = 'summary-text error';
+    if (diagSummary) {
+      diagSummary.textContent = 'Diagnostics failed. Please fix the issues above and try again.';
+      diagSummary.className = 'summary-text error';
+    }
     addLog('Obsidian diagnostics failed.', 'error');
-    obsSampleBtn.disabled = true;
+    if (obsSampleBtn) obsSampleBtn.disabled = true;
   }
 });
 
@@ -1104,10 +1115,10 @@ async function loadFolderList() {
     if (r && r.status === 'ok') {
       if (r.hasBookmarks) {
         currentBookmarks = r.bookmarks || [];
-        scanSummary.style.display = 'block';
-        statusFiltersContainer.style.display = 'block';
-        bulkActions.style.display = 'flex';
-        reviewCleanupActions.style.display = 'block';
+        if (scanSummary) scanSummary.style.display = 'block';
+        if (statusFiltersContainer) statusFiltersContainer.style.display = 'block';
+        if (bulkActions) bulkActions.style.display = 'flex';
+        if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
         updateSummaryCounts(currentBookmarks);
         renderList(currentBookmarks);
         addLog('Restored bookmarks from previous session.', 'system');
