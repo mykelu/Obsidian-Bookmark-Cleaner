@@ -65,6 +65,13 @@ const btnGoToScanAction = document.getElementById('btn-go-to-scan-action');
 const btnGoToReviewAction = document.getElementById('btn-go-to-review-action');
 const btnSaveObsidian = document.getElementById('btn-save-obsidian');
 
+// Select All & Delete Selected Elements
+const selectAllRow = document.getElementById('select-all-row');
+const checkboxSelectAll = document.getElementById('checkbox-select-all');
+const selectAllCount = document.getElementById('select-all-count');
+const btnDeleteSelected = document.getElementById('btn-delete-selected');
+let manualDeleteAction = null; // tracks whether delete flow uses policy or manual
+
 let pendingDeleteIds = []; // IDs staged for deletion
 
 // Extraction Preview Modal Elements
@@ -406,6 +413,17 @@ function renderList(bookmarks) {
       searchResultsInfo.style.display = 'none';
     }
   }
+
+  // Update Select All row
+  if (selectAllRow) {
+    if (filtered.length > 0) {
+      selectAllRow.style.display = 'block';
+      if (selectAllCount) selectAllCount.textContent = Math.min(filtered.length, 100);
+      if (checkboxSelectAll) checkboxSelectAll.checked = false;
+    } else {
+      selectAllRow.style.display = 'none';
+    }
+  }
   
   const toRender = filtered.slice(0, 100);
   toRender.forEach(b => {
@@ -634,6 +652,39 @@ if (captureSelectedBtn) {
   captureSelectedBtn.disabled = false;
   captureSelectedBtn.textContent = 'Capture to Obsidian';
 });
+}
+
+// Select All checkbox logic
+if (checkboxSelectAll) {
+  checkboxSelectAll.addEventListener('change', () => {
+    const checkboxes = document.querySelectorAll('.bookmark-select');
+    checkboxes.forEach(cb => { cb.checked = checkboxSelectAll.checked; });
+  });
+}
+
+// Delete Selected button logic
+if (btnDeleteSelected) {
+  btnDeleteSelected.addEventListener('click', () => {
+    const checked = document.querySelectorAll('.bookmark-select:checked');
+    if (checked.length === 0) {
+      addLog('No bookmarks selected. Use checkboxes to select items first.', 'info');
+      return;
+    }
+
+    const selectedIds = Array.from(checked).map(cb => cb.getAttribute('data-id'));
+    const selectedBookmarks = selectedIds.map(id => currentBookmarks.find(b => b.id === id)).filter(Boolean);
+
+    // Populate the confirmation modal
+    pendingDeleteIds = selectedIds;
+    manualDeleteAction = 'DELETE_BOOKMARKS_MANUAL';
+    if (deleteConfirmCount) deleteConfirmCount.textContent = `${selectedBookmarks.length} bookmark(s) selected for deletion:`;
+    if (deleteConfirmList) {
+      deleteConfirmList.innerHTML = selectedBookmarks.map(c =>
+        `<div style="margin-bottom: 4px;"><strong>${c.title}</strong><br><span style="color: #666; word-break: break-all;">${c.url}</span> <span class="badge badge-${c.status}">${c.status}</span></div>`
+      ).join('');
+    }
+    if (deleteConfirmModal) deleteConfirmModal.showModal();
+  });
 }
 
 function updateSummaryCounts(bookmarks) {
@@ -1037,6 +1088,7 @@ if (viewDeleteCandidatesBtn) {
       return;
     }
     pendingDeleteIds = r.candidates.map(c => c.id);
+    manualDeleteAction = null; // Use policy-gated DELETE_BOOKMARKS
     deleteConfirmCount.textContent = `${r.candidates.length} bookmark(s) are eligible for deletion:`;
     deleteConfirmList.innerHTML = r.candidates.map(c =>
       `<div style="padding:2px 0;border-bottom:1px solid #fee;">• <strong>${c.title}</strong><br><span style="color:#888;font-size:10px;">${c.url} (${c.attempts} checks)</span></div>`
@@ -1058,11 +1110,19 @@ if (btnConfirmDelete) {
   btnConfirmDelete.textContent = 'Deleting...';
   addLog(`Deleting ${pendingDeleteIds.length} bookmarks...`, 'system');
 
-  const r = await chrome.runtime.sendMessage({ action: 'DELETE_BOOKMARKS', ids: pendingDeleteIds, confirmed: true });
+  // Use manual action if triggered from "Delete Selected", otherwise use policy-gated action
+  const action = manualDeleteAction || 'DELETE_BOOKMARKS';
+  const r = await chrome.runtime.sendMessage({ action, ids: pendingDeleteIds, confirmed: true });
   if (r.status === 'success') {
     const deleted = r.results.filter(x => x.action === 'deleted').length;
     const failed = r.results.filter(x => x.action === 'failed').length;
     addLog(`Deleted: ${deleted}, Failed: ${failed}`, deleted > 0 ? 'success' : 'error');
+    
+    // Log backup info if available (for recovery)
+    if (r.backup && r.backup.length > 0) {
+      addLog(`Backup saved to console (${r.backup.length} items). Open DevTools > Console to copy if needed.`, 'info');
+    }
+    
     currentBookmarks = r.allBookmarks;
     updateSummaryCounts(currentBookmarks);
     renderList(currentBookmarks);
@@ -1071,6 +1131,7 @@ if (btnConfirmDelete) {
   }
 
   pendingDeleteIds = [];
+  manualDeleteAction = null;
   btnConfirmDelete.disabled = false;
   btnConfirmDelete.textContent = 'Yes, Delete Permanently';
   deleteConfirmModal.close();

@@ -669,6 +669,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // ── User-Driven Manual Deletion (no policy gate) ─────────────────
+  // For bookmarks the user has manually reviewed and selected for removal.
+
+  if (message.action === 'DELETE_BOOKMARKS_MANUAL') {
+    if (!message.confirmed) {
+      sendResponse({ status: 'error', message: 'Deletion requires explicit confirmation (confirmed: true)' });
+      return true;
+    }
+
+    const ids = message.ids;
+    if (!ids || ids.length === 0) {
+      sendResponse({ status: 'error', message: 'No bookmark IDs provided' });
+      return true;
+    }
+
+    // Verify all IDs exist in our state (safety check)
+    const validIds = ids.filter(id => state.bookmarks.some(b => b.id === id));
+    if (validIds.length === 0) {
+      sendResponse({ status: 'error', message: 'None of the provided IDs match known bookmarks.' });
+      return true;
+    }
+
+    (async () => {
+      // Export backup before deletion
+      const backupBookmarks = state.bookmarks
+        .filter(b => validIds.includes(b.id))
+        .map(b => ({ id: b.id, title: b.title, url: b.url, folderPath: b.folderPath, status: b.status }));
+      
+      console.log('[Service Worker] Manual deletion backup:', JSON.stringify(backupBookmarks));
+
+      const results = [];
+      for (const id of validIds) {
+        try {
+          await chrome.bookmarks.remove(id);
+          results.push({ id, action: 'deleted' });
+        } catch (e) {
+          results.push({ id, action: 'failed', reason: e.toString() });
+        }
+      }
+      // Remove deleted bookmarks from state
+      const deletedIds = new Set(results.filter(r => r.action === 'deleted').map(r => r.id));
+      state.bookmarks = state.bookmarks.filter(b => !deletedIds.has(b.id));
+      await saveBookmarksNow(state.bookmarks);
+      sendResponse({ status: 'success', results, backup: backupBookmarks, allBookmarks: state.bookmarks });
+    })();
+    return true;
+  }
+
   // ── Phase 8: Classify Actions ────────────────────────────────────
 
   if (message.action === 'CLASSIFY_ALL') {

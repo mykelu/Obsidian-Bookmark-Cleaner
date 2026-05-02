@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-05-03
+### Added
+- **Delete Selected**: New button in the Review tab to delete user-reviewed bookmarks with a confirmation modal. Bypasses the 21-day/3-check auto-candidate policy since the user has manually reviewed the items.
+- **Select All (Filtered)**: Checkbox above the bookmark list that selects/deselects all visible items after filtering. Works with any status filter or search query.
+- **Backup on Delete**: Every manual deletion logs a JSON backup to the browser console for recovery if needed.
+- **DELETE_BOOKMARKS_MANUAL** service worker action for user-driven deletions with full safety checks (ID validation, confirmation requirement, state persistence).
+### Fixed
+- Icons converted to actual PNG format (were JPEG data with .png extension, causing Chrome to show puzzle piece icon).
+- Queue progress percentage now updates in real-time (the `queue-percent` element was not wired to JS).
+- Health check button no longer stays stuck on "Checking..." after completion.
+
 ## [1.0.2] - 2026-05-05
 ### Added
 - Link checking batching: Users can now process large bookmark collections in smaller chunks (50, 100, or 500 items) to improve performance and stability.

@@ -208,6 +208,15 @@
           </div>
           <button id="btn-extract-selected" title="Pull content from selected healthy links">Extract Selected</button>
           <button id="btn-capture-selected" title="Create notes in Obsidian">Capture to Obsidian</button>
+          <button id="btn-delete-selected" class="btn-danger" title="Delete selected bookmarks from Chrome" style="margin-top: 4px;">Delete Selected</button>
+        </div>
+
+        <!-- Select All Row -->
+        <div id="select-all-row" style="display: none; padding: 8px 12px; background: var(--gray-light); border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="checkbox-select-all">
+            <span id="select-all-label">Select All (<span id="select-all-count">0</span> items)</span>
+          </label>
         </div>
 
         <div id="bookmark-list" class="bookmark-list-container">
