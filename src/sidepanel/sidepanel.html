@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obsidian Bookmark Cleaner</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Obsidian Bookmark Cleaner</h1>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-target="dashboard">Dashboard</button>
+      <button class="tab-btn" data-target="scan">Scan</button>
+      <button class="tab-btn" data-target="review">Review</button>
+      <button class="tab-btn" data-target="settings">Settings</button>
+      <button class="tab-btn" data-target="help">Help</button>
+    </nav>
+
+    <main class="tab-content">
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="tab-pane active">
+        <span id="sw-status" style="display: none;"></span> <!-- Hidden anchor for JS reference -->
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <h2 style="margin: 0;">Dashboard</h2>
+          <span id="sw-status-chip" class="status-chip checking">Checking…</span>
+        </div>
+        
+        <div class="status-card">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+            <h3 style="margin: 0;">Service Worker Status</h3>
+          </div>
+          
+          <p style="font-size: 11px; color: var(--gray-mid); margin-top: -8px; margin-bottom: 16px;">
+            Checks whether the background worker is responsive right now. Status refreshes automatically when the Dashboard opens.
+          </p>
+
+          <div class="status-grid">
+            <div class="status-row">
+              <span class="status-label">Current status</span>
+              <span id="sw-status-detail">Initializing…</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Last checked</span>
+              <span id="sw-last-checked">—</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Response time</span>
+              <span id="sw-latency">—</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Worker version</span>
+              <span id="sw-version">—</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Pending jobs</span>
+              <span id="sw-pending">—</span>
+            </div>
+          </div>
+
+          <div id="dashboard-health-actions" style="display: none; gap: 8px; margin-top: 16px;">
+            <button id="btn-health-check" style="flex: 1; font-size: 11px;">Refresh Worker Status</button>
+            <button id="btn-toggle-logs" style="flex: 1; font-size: 11px;">Show diagnostics</button>
+          </div>
+          <div id="dashboard-health-simple" style="margin-top: 16px;">
+            <button id="btn-health-check-simple" style="width: 100%; font-size: 11px;">Refresh Worker Status</button>
+          </div>
+        </div>
+
+        <!-- Inline Diagnostics (Collapsible) -->
+        <div id="diagnostics-panel" style="display: none; margin-bottom: 24px;">
+          <div style="border-top: 1px solid var(--border-color); padding-top: 16px; margin-top: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <h4 style="margin: 0; font-size: 12px; color: var(--text-color); font-weight: 600;">Diagnostics</h4>
+              <button id="btn-clear-logs" style="font-size: 10px; padding: 2px 6px;">Clear</button>
+            </div>
+            <p style="font-size: 11px; color: var(--gray-mid); margin-bottom: 12px;">
+              Shows recent worker messages, status checks, and runtime errors. Use this when troubleshooting scans, extraction, or Obsidian connectivity.
+            </p>
+            <div class="log-container" id="log-output" style="height: 180px;">
+              <p class="log-entry system">No diagnostics yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="diagnostics-hidden-placeholder" style="text-align: center; font-size: 11px; color: var(--gray-mid); margin-bottom: 24px; padding: 12px; background: var(--gray-light); border-radius: 6px;">
+          Diagnostics are hidden.
+        </div>
+
+        <div class="status-card">
+          <h3>Quick Start</h3>
+          <p style="font-size: 12px; margin-bottom: 12px;">Welcome to the release candidate. Start by scanning your bookmarks to identify broken links and duplicates.</p>
+          <button id="btn-go-to-scan-action" style="width: 100%; text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 10px; border: 1px solid var(--border-color); background: #fff; border-radius: 6px; cursor: pointer;">
+            <span style="font-weight: 600;">Run a New Scan</span>
+            <span>→</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- SCAN -->
+      <section id="scan" class="tab-pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h2 style="margin: 0;">Scan Bookmarks</h2>
+          <button id="btn-scan-all" class="btn-primary" style="padding: 10px 24px;">Start Scan</button>
+        </div>
+
+        <!-- Queue Progress (for link checks) -->
+        <div id="queue-progress-card" class="status-card" style="display: none; border-left: 4px solid var(--primary-color); margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h3 style="margin: 0; font-size: 13px;">Active Queue: <span id="queue-type">...</span></h3>
+            <span id="queue-percent" style="font-size: 11px; font-weight: bold; color: var(--primary-color);">0%</span>
+          </div>
+          <div class="progress-container">
+            <div id="queue-bar" class="progress-bar" style="width: 0%"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span id="queue-stats" style="font-size: 11px; color: var(--gray-mid);">Initializing...</span>
+            <div style="display: flex; gap: 6px;">
+              <button id="btn-pause-queue" style="font-size: 10px; padding: 2px 8px;">Pause</button>
+              <button id="btn-resume-queue" style="font-size: 10px; padding: 2px 8px;" disabled>Resume</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="scan-progress-container" style="display: none; background: #fff; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 600; font-size: 13px;">Progress</span>
+            <span id="scan-percentage" style="font-size: 11px; color: var(--gray-mid);">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div id="scan-progress" class="progress-fill" style="width: 0%;"></div>
+          </div>
+          <div id="scan-status-text" style="font-size: 11px; color: var(--gray-mid); margin-top: 8px; text-align: center;">Initializing...</div>
+        </div>
+
+        <!-- Scan Summary -->
+        <div id="scan-summary" class="status-card" style="display: none; margin-bottom: 24px;">
+          <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 12px;">Last Scan Results</h3>
+          <div style="margin-bottom: 8px; font-weight: 600; font-size: 13px;">Total Bookmarks: <span id="summary-total">0</span></div>
+          <ul id="summary-folders" class="folder-stats" style="list-style: none; padding: 0; margin: 0 0 12px 0; font-size: 12px;"></ul>
+          <div id="summary-text" class="summary-text" style="margin-bottom: 16px; font-size: 12px; line-height: 1.4;"></div>
+          <button id="btn-go-to-review-action" class="btn-primary" style="width: 100%;">Open Review Tab</button>
+        </div>
+
+        <div style="background: var(--gray-light); border-radius: 8px; padding: 16px;">
+          <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 12px; color: var(--gray-dark);">Scan Scope</h3>
+          <p style="font-size: 12px; line-height: 1.5; color: var(--gray-mid); margin-bottom: 12px;">This scan checks all your bookmarks to identify:</p>
+          <ul style="font-size: 11px; margin: 0; padding-left: 20px; line-height: 1.8; color: var(--gray-mid);">
+            <li>Duplicate bookmarks</li>
+            <li>Dead or broken links</li>
+            <li>Redirected URLs</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- REVIEW -->
+      <section id="review" class="tab-pane">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h2 style="margin: 0;">Review & Actions</h2>
+        </div>
+
+        <div class="search-bar">
+          <span style="margin-right: 8px; opacity: 0.5;">🔍</span>
+          <input type="text" id="input-search" placeholder="Search by title or URL...">
+        </div>
+        <div id="search-results-info" style="font-size: 11px; color: var(--gray-mid); margin: -8px 0 12px 12px; font-weight: 500;"></div>
+
+        <div id="status-filters" class="filters" style="display: none; flex-wrap: wrap;">
+          <label for="filter-status" style="font-size: 12px; font-weight: 600;">Status:</label>
+          <select id="filter-status" style="flex: 1; min-width: 120px;">
+            <option value="all">All Items</option>
+            <option value="healthy">Healthy</option>
+            <option value="redirected">Redirected</option>
+            <option value="soft-broken">Soft Broken</option>
+            <option value="hard-broken">Hard Broken</option>
+            <option value="duplicate">Duplicate</option>
+            <option value="delete-candidate">Delete Candidate (v0.8 policy)</option>
+          </select>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div id="bulk-actions" class="actions" style="display: none; margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+          <button id="btn-check-links" title="Validate all unchecked links">Check Links</button>
+          <button id="btn-extract-selected" title="Pull content from selected healthy links">Extract Selected</button>
+          <button id="btn-capture-selected" title="Create notes in Obsidian">Capture to Obsidian</button>
+        </div>
+
+        <div id="bookmark-list" class="bookmark-list-container">
+          <p style="text-align: center; color: var(--gray-mid); padding: 40px 0;">No scan data. Run a scan from the <strong>Scan</strong> tab.</p>
+          <div style="text-align: center; margin-top: -20px;">
+            <button id="btn-go-to-scan" style="font-size: 11px;">Go to Scan Tab</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="tab-pane">
+        <h2 style="margin-bottom: 16px;">Settings</h2>
+
+        <!-- General -->
+        <div class="settings-group">
+          <div class="settings-header">
+            <h3>General</h3>
+          </div>
+          <div class="settings-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 12px; color: var(--gray-mid);">Current Session Logs</span>
+              <button id="btn-clear-logs" class="btn-secondary" style="padding: 4px 10px; font-size: 11px;">Clear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interface Visibility -->
+        <div class="settings-group">
+          <div class="settings-header">
+            <h3>Interface Visibility</h3>
+          </div>
+          <div class="settings-content">
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;">
+                <span>Show Obsidian Integration</span>
+                <input type="checkbox" id="toggle-show-obsidian">
+              </label>
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;">
+                <span>Show Advanced Maintenance Tools</span>
+                <input type="checkbox" id="toggle-show-maintenance">
+              </label>
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;">
+                <span>Show Diagnostics Toggle on Dashboard</span>
+                <input type="checkbox" id="toggle-show-diagnostics">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Obsidian Integration Section -->
+        <div id="obsidian-settings-group" class="settings-group" style="display: none;">
+          <div class="settings-header">
+            <h3>Obsidian Integration</h3>
+          </div>
+          <div class="settings-content">
+            <div class="form-group">
+              <label for="obsidian-url">Local REST API URL</label>
+              <input type="text" id="obsidian-url" value="https://127.0.0.1:27124">
+            </div>
+            <div class="form-group">
+              <label for="obsidian-key">API Key</label>
+              <input type="password" id="obsidian-key" placeholder="Paste Local REST API Key">
+            </div>
+            <div class="form-group">
+              <label for="obsidian-folder">Destination Path</label>
+              <input type="text" id="obsidian-folder" value="03 Resources/Web Clips/Bookmarks/">
+            </div>
+            <div class="form-group">
+              <label for="obsidian-template">Filename Template</label>
+              <input type="text" id="obsidian-template" value="{title}.md">
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+              <button id="btn-save-obsidian" style="flex: 1;">Save Integration</button>
+              <button id="btn-test-connection" style="flex: 1;">Test Connection</button>
+            </div>
+
+            <!-- Connection Results -->
+            <div id="diagnostic-results" style="display: none; margin-top: 16px; padding: 12px; background: var(--gray-light); border-radius: 6px; font-size: 11px;">
+              <h4 style="margin: 0 0 8px 0; font-size: 11px; text-transform: uppercase;">Connectivity Test</h4>
+              <ul id="diagnostic-list" style="list-style: none; padding: 0; margin-bottom: 8px;"></ul>
+              <p id="diagnostic-summary" style="margin: 0; font-weight: 600;"></p>
+              <button id="btn-create-sample" disabled style="width: 100%; margin-top: 10px;">Create Sample Note</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scan Preferences -->
+        <div class="settings-group">
+          <div class="settings-header">
+            <h3>Scan Preferences</h3>
+          </div>
+          <div class="settings-content">
+            <p style="font-size: 11px; color: var(--gray-mid); margin-bottom: 12px;">Automatically recheck soft-broken links at regular intervals.</p>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+              <label for="recheck-interval" style="font-size: 12px;">Interval:</label>
+              <select id="recheck-interval" style="flex: 1; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+                <option value="60">Every hour</option>
+                <option value="1440" selected>Every 24 hours</option>
+                <option value="10080">Weekly</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-schedule-recheck" style="flex: 1;">Enable Schedule</button>
+              <button id="btn-cancel-recheck" style="flex: 1;">Disable</button>
+            </div>
+            <div id="recheck-status" style="font-size: 11px; margin-top: 8px; text-align: center; color: var(--gray-mid);"></div>
+          </div>
+        </div>
+
+        <!-- Advanced / Diagnostics -->
+        <div id="maintenance-section" class="settings-group" style="display: none;">
+          <div class="settings-header">
+            <h3>Advanced / Diagnostics</h3>
+          </div>
+          <div class="settings-content">
+            <h4 style="margin: 0 0 8px 0; font-size: 12px;">Maintenance Actions</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+              <button id="btn-dedupe" class="btn-secondary">Deduplicate Review Folder</button>
+              <button id="btn-recheck-broken" class="btn-secondary">Recheck Broken Links</button>
+              <button id="btn-export-json" class="btn-secondary">Export All to JSON</button>
+            </div>
+            
+            <h4 style="margin: 0 0 8px 0; font-size: 12px;">Cleanup Tools</h4>
+            <p style="font-size: 11px; color: var(--gray-mid); margin-bottom: 12px;">Safely remove dead bookmarks that meet the 21-day/3-check policy.</p>
+            <button id="btn-view-delete-candidates" class="btn-danger" style="width: 100%;">View Delete Candidates</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HELP -->
+      <section id="help" class="tab-pane">
+        <section class="help-panel" aria-labelledby="help-title">
+          <header class="help-header">
+            <h1 id="help-title">Help & Support</h1>
+            <p>This tool helps you review bookmarks, identify broken or duplicate links, and capture useful content into your notes when needed.</p>
+            <p>Use the extension in three simple steps: check the Dashboard, run a scan, then review results before capturing, archiving, or updating bookmarks.</p>
+          </header>
+
+          <div class="help-accordion" role="list">
+            <details open>
+              <summary>Welcome</summary>
+              <div class="help-content">
+                <p>Welcome to the bookmark review and capture workspace.</p>
+                <p>This extension is designed to keep your bookmarks organized while preserving useful information for later reference.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Getting Started</summary>
+              <div class="help-content">
+                <p>Open Dashboard first. This gives you a quick view of system status, worker readiness, and recent activity.</p>
+                <p>Use Scan to analyze bookmarks and detect issues. Use Review to inspect results before taking action.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Dashboard</summary>
+              <div class="help-content">
+                <p>The Dashboard is the main working area. It shows current system status, summary counts, and quick actions.</p>
+                <p>Service Worker Status shows whether the background worker is responding right now. This status is checked automatically when the Dashboard opens.</p>
+                <p>If the worker is not responding, use <strong>Refresh Worker Status</strong> and wait a moment while the worker starts up.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Scanning Bookmarks</summary>
+              <div class="help-content">
+                <p>Use Scan when you want to check the health of your bookmarks.</p>
+                <p>The extension may classify bookmarks as healthy, redirected, duplicate, soft-broken, or hard-broken.</p>
+                <p>Soft-broken links may still become available later, so they should usually be reviewed or rechecked instead of deleted immediately.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Reviewing Results</summary>
+              <div class="help-content">
+                <p>Use Review to inspect bookmarks before making changes.</p>
+                <p>Redirected links can often be updated to a newer destination, duplicates can be cleaned up, and broken links can be reviewed before archival or removal.</p>
+                <p>For safety, bookmarks should not be permanently deleted without confirmation.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Connecting Obsidian</summary>
+              <div class="help-content">
+                <p>If you want to send content to Obsidian, open Settings and expand <strong>Obsidian Integration</strong>.</p>
+                <p>Enter your Obsidian Local REST API URL, API key, destination folder, and filename preferences.</p>
+                <p>Use <strong>Test Connection</strong> before capturing notes to confirm that the connection is working correctly.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Settings</summary>
+              <div class="help-content">
+                <p>Settings contains optional controls and advanced configuration.</p>
+                <p>Use Settings to manage integrations, scan preferences, interface visibility, and advanced options.</p>
+                <p>Some controls are hidden by default to keep the interface clean. Turn them on only when you need them.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Diagnostics</summary>
+              <div class="help-content">
+                <p>Diagnostics are optional and mainly useful for troubleshooting.</p>
+                <p>You can show diagnostics when you need to review worker status checks, recent runtime messages, or error details.</p>
+                <p>If everything is working normally, you usually do not need to keep diagnostics visible.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Troubleshooting</summary>
+              <div class="help-content">
+                <p>If the Dashboard says the worker is not responding, refresh worker status and wait a moment.</p>
+                <p>If Obsidian does not connect, verify the API URL, API key, and certificate trust settings.</p>
+                <p>If extraction does not work on a page, the site may require login, may block access, or may not allow clean extraction.</p>
+                <p>If a bookmark appears broken, try rechecking it before deciding to archive or remove it.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Privacy and Safety</summary>
+              <div class="help-content">
+                <p>This extension is designed to support review-first workflows.</p>
+                <p>Bookmarks should not be permanently deleted without confirmation, and temporary errors do not always mean a bookmark is invalid.</p>
+                <p>Captured content is only sent to destinations you configure.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Privacy and Data Handling</summary>
+              <div class="help-content">
+                <p><strong>Local Processing:</strong> All bookmark scanning, duplicate detection, and health checks are performed locally within your browser.</p>
+                <p><strong>No External Analytics:</strong> This extension does not use external analytics tracking or third-party data collection services.</p>
+                <p><strong>Data Destinations:</strong> Data is only sent to the Obsidian Local REST API if you have configured and enabled the Obsidian Integration.</p>
+                <p><strong>Minimal Permissions:</strong> The extension only requests the permissions necessary to manage bookmarks, extract content for your notes, and connect to your local Obsidian instance.</p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Support</summary>
+              <div class="help-content">
+                <p>For setup help or support, contact your administrator, implementation partner, or support contact.</p>
+                <p>If your organization uses a custom support process, place those instructions here.</p>
+                <p style="font-size: 11px; color: var(--gray-mid); border-top: 1px solid #eee; padding-top: 8px; margin-top: 16px;">
+                  Copyright (c) 2026 Michael Lu<br>
+                  Developed by Michael Lu with Antigravity-assisted implementation and refinement.<br>
+                  All AI-assisted outputs were reviewed, edited, and approved by the project author.<br>
+                  Licensed under the Apache License, Version 2.0.
+                </p>
+              </div>
+            </details>
+
+            <details>
+              <summary>Version</summary>
+              <div class="help-content">
+                <p>Extension Version: <span id="help-app-version">1.0.0</span></p>
+                <p>You can also check the current extension version in the footer or in the Settings area.</p>
+              </div>
+            </details>
+          </div>
+        </section>
+      </section>
+      </section>
+    </main>
+
+    <footer style="margin-top: auto; padding: 16px; border-top: 1px solid var(--border-color); text-align: center; font-size: 10px; color: var(--gray-mid); background: #fff; line-height: 1.5;">
+      <strong>Obsidian Bookmark Cleaner</strong> (v<span id="app-version">1.0.0</span>)<br>
+      Copyright (c) 2026 Michael Lu<br>
+      Developed by Michael Lu with Antigravity-assisted implementation and refinement.<br>
+      All AI-assisted outputs were reviewed, edited, and approved by the project author.<br>
+      Licensed under the Apache License, Version 2.0.
+    </footer>
+  </div>
+  
+  <!-- Modals -->
+  <dialog id="preview-modal" style="width: 85%; height: 85%; max-width: 600px; border-radius: 12px; border: none; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h3 id="preview-title" style="margin:0; font-size: 16px;">Extraction</h3>
+      <button id="btn-close-preview" style="border-radius: 50%; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+    </div>
+    <div id="preview-status" style="margin-bottom: 12px; font-size: 12px;"></div>
+    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; overflow-y: auto; height: calc(100% - 100px); border: 1px solid #eee;">
+      <pre id="preview-content" style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 12px; margin: 0;"></pre>
+    </div>
+  </dialog>
+
+  <dialog id="delete-confirm-modal" style="width: 90%; max-width: 500px; border-radius: 12px; border: none; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h3 style="margin:0; color: var(--danger-color); font-size: 18px;">⚠️ Confirm Permanent Deletion</h3>
+      <button id="btn-close-delete-modal" style="border: none; background: none; font-size: 20px; cursor: pointer;">✕</button>
+    </div>
+    <p id="delete-confirm-count" style="font-size: 14px; font-weight: 700; margin-bottom: 12px;"></p>
+    <div id="delete-confirm-list" style="max-height: 180px; overflow-y: auto; background: #fff5f5; padding: 12px; border-radius: 8px; border: 1px solid #fad2cf; margin-bottom: 20px; font-size: 11px;"></div>
+    <div style="text-align: right; display: flex; gap: 12px; justify-content: flex-end;">
+      <button id="btn-cancel-delete" style="border: none; background: none; color: var(--gray-mid); font-weight: 600;">Cancel</button>
+      <button id="btn-confirm-delete" class="btn-danger" style="padding: 10px 20px; border-radius: 6px; font-weight: 600;">Permanently Delete</button>
+    </div>
+  </dialog>
+
+  <dialog id="note-preview-modal" style="width: 85%; height: 85%; max-width: 600px; border-radius: 12px; border: none; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+      <h3 id="note-preview-heading" style="margin:0; font-size: 16px;">Note Preview</h3>
+      <button id="btn-close-note-preview" style="border-radius: 50%; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
+    </div>
+    <div id="note-preview-path" style="margin-bottom: 4px; font-size: 11px; color: var(--gray-mid);"></div>
+    <div id="note-preview-action" style="margin-bottom: 12px; font-size: 12px; font-weight: 600;"></div>
+    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; overflow-y: auto; height: calc(100% - 140px); border: 1px solid #eee; margin-bottom: 16px;">
+      <pre id="note-preview-body" style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 12px; margin: 0;"></pre>
+    </div>
+    <button id="btn-capture-from-preview" style="width: 100%; padding: 10px; font-weight: 600;">Write to Obsidian</button>
+  </dialog>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

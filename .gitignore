@@ -1,0 +1,13 @@
+# MacOS
+.DS_Store
+
+# Tooling
+.gemini/
+.system_generated/
+scratch/
+
+# Local build
+*.log
+node_modules/
+dist/
+build/

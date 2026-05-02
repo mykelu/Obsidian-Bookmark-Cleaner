@@ -1,0 +1,520 @@
+:root {
+  --primary-color: #1a73e8;
+  --primary-hover: #1557b0;
+  --bg-color: #ffffff;
+  --text-color: #3c4043;
+  --border-color: #dadce0;
+  --danger-color: #d93025;
+  --warning-color: #f29900;
+  --success-color: #188038;
+  --gray-light: #f8f9fa;
+  --gray-mid: #9aa0a6;
+  --shadow: 0 1px 2px 0 rgba(60,64,67,0.30), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--gray-light);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0;
+}
+
+header {
+  background-color: #fff;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 18px;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.tabs {
+  display: flex;
+  background-color: #fff;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-mid);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text-color);
+  background-color: rgba(0,0,0,0.02);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.active {
+  display: block;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+p {
+  line-height: 1.5;
+  color: #5f6368;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+button {
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--gray-light);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button#btn-scan, button#btn-test-connection, button#btn-capture-from-preview, button#btn-confirm-delete {
+  background-color: var(--primary-color);
+  color: #fff;
+  border: none;
+}
+
+button#btn-scan:hover:not(:disabled), button#btn-test-connection:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+button.btn-danger {
+  background-color: var(--danger-color);
+  color: #fff;
+  border: none;
+}
+
+.status-card {
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.status-card h3 {
+  margin-top: 0;
+  font-size: 14px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.bookmark-list-container {
+  margin-top: 16px;
+}
+
+.bookmark-item {
+  background-color: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+
+.bookmark-item:hover {
+  border-color: var(--gray-mid);
+}
+
+.bookmark-item-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-item-url {
+  font-size: 11px;
+  color: var(--gray-mid);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.badge-healthy { background-color: #e6f4ea; color: var(--success-color); }
+.badge-redirected { background-color: #e8f0fe; color: var(--primary-color); }
+.badge-soft-broken { background-color: #fef7e0; color: #b05e00; }
+.badge-hard-broken { background-color: #fce8e6; color: var(--danger-color); }
+.badge-duplicate { background-color: #f1f3f4; color: #5f6368; }
+.badge-pending { background-color: #f1f3f4; color: #5f6368; }
+.badge-success { background-color: #e6f4ea; color: var(--success-color); }
+.badge-partial { background-color: #fef7e0; color: #b05e00; }
+.badge-failed { background-color: #fce8e6; color: var(--danger-color); }
+
+.log-container {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  padding: 12px;
+  border-radius: 4px;
+  height: 300px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.log-entry.system { color: #569cd6; }
+.log-entry.success { color: #4ec9b0; }
+.log-entry.error { color: #f44747; }
+.log-entry.info { color: #ce9178; }
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: 13px;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
+}
+
+.folder-stats {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+}
+
+.folder-stats li {
+  padding: 4px 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.summary-text {
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.summary-text.success { background-color: #e6f4ea; color: var(--success-color); border: 1px solid #ceead6; }
+.summary-text.error { background-color: #fce8e6; color: var(--danger-color); border: 1px solid #fad2cf; }
+.summary-text.system { background-color: #e8f0fe; color: var(--primary-color); border: 1px solid #d2e3fc; }
+
+.diag-item {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.diag-pass { color: var(--success-color); }
+.diag-fail { color: var(--danger-color); font-weight: bold; }
+
+/* Phase 9 Release Candidate additions */
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 4px 12px;
+  margin-bottom: 12px;
+}
+
+.search-bar input {
+  border: none;
+  outline: none;
+  padding: 6px;
+  flex: 1;
+  font-size: 13px;
+}
+
+.section-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 20px 0;
+}
+
+.destructive-action {
+  border: 1px solid #fad2cf;
+  background-color: #fff5f5;
+  padding: 12px;
+  border-radius: 6px;
+}
+
+.destructive-action h4 {
+  margin-top: 0;
+  color: var(--danger-color);
+  font-size: 13px;
+}
+.status-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-label {
+  color: var(--gray-mid);
+}
+
+.status-chip {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-chip.checking { background: #f1f3f4; color: #5f6368; }
+.status-chip.responsive { background: #e6f4ea; color: var(--success-color); }
+.status-chip.waking { background: #fef7e0; color: #b05e00; }
+.status-chip.not-responding { background: #fce8e6; color: var(--danger-color); }
+.status-chip.error { background: #fce8e6; color: var(--danger-color); }
+
+/* Help Section Styling */
+.help-section {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.help-section h3 {
+  margin-top: 0;
+  font-size: 14px;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+}
+
+.help-section p {
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.help-section ul {
+  font-size: 12px;
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.help-section li {
+  margin-bottom: 4px;
+}
+
+/* Settings Group Styling */
+.settings-group {
+  margin-bottom: 16px;
+}
+
+.settings-group .settings-content {
+  padding: 16px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 0 0 8px 8px;
+  border-top: none;
+}
+
+.settings-group .settings-header {
+  background: var(--gray-light);
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.settings-group h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Help Section Refinement */
+.help-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.help-header h1 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.help-header p {
+  margin: 0 0 12px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--gray-mid);
+}
+
+.help-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.help-accordion details {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.help-accordion details[open] {
+  border-color: var(--primary-color);
+}
+
+.help-accordion summary {
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  background: #fff;
+}
+
+.help-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-accordion summary::after {
+  content: "→";
+  opacity: 0.5;
+  transition: transform 0.2s;
+}
+
+.help-accordion details[open] summary::after {
+  transform: rotate(90deg);
+  opacity: 1;
+  color: var(--primary-color);
+}
+
+.help-accordion summary:hover {
+  background: var(--gray-light);
+}
+
+.help-accordion .help-content {
+  padding: 0 16px 16px 16px;
+  border-top: 1px solid transparent;
+}
+
+.help-accordion details[open] .help-content {
+  border-top-color: var(--border-color);
+}
+
+.help-accordion .help-content p {
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #444;
+}
+
+.help-accordion .help-content p:first-child {
+  margin-top: 16px;
+}
