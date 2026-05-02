@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-05-03
+### Fixed
+- **Message Channel Hardening**: Fixed the 'message channel closed' error by explicitly managing `return true` and `return false` in the service worker's message listener.
+- **UI Error Catching**: Wrapped all queue control calls in the side panel with try/catch blocks to prevent uncaught promise errors when communication is interrupted.
+
 ## [1.1.2] - 2026-05-03
 ### Fixed
 - **Concurrent Operation Lock**: Implemented a global 'Busy' state across the UI. Action buttons (Scan, Check Links, Extract, Capture) now automatically lock whenever the service worker is processing a task.

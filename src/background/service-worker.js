@@ -147,6 +147,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       isBusy: state.isBusy,
       isScanning: state.isScanning
     });
+    return false;
   }
 
   if (message.action === 'SCAN_BOOKMARKS') {
@@ -214,6 +215,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       state.isBusy = false;
       sendResponse({ status: 'error', message: err.toString() });
     });
+    return true;
   }
 
   if (message.action === 'DEDUPE_BOOKMARKS') {
@@ -225,6 +227,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       saveBookmarks(state.bookmarks);
       sendResponse({ status: 'success', duplicateCount, bookmarks: state.bookmarks });
     }
+    return false;
   }
 
   if (message.action === 'SETUP_FOLDERS') {
@@ -232,6 +235,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       state.reviewFolders = folders;
       sendResponse({ status: 'success', folders });
     }).catch(err => sendResponse({ status: 'error', message: err.toString() }));
+    return true;
   }
 
   if (message.action === 'MOVE_BOOKMARKS') {
@@ -240,10 +244,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     if (!folderId) {
       sendResponse({ status: 'error', message: `Target folder '${folderName}' not found. Please Setup Review Folders first.` });
+      return false;
     } else {
       Promise.all(bookmarkIds.map(id => moveBookmark(id, folderId)))
         .then(() => sendResponse({ status: 'success', count: bookmarkIds.length }))
         .catch(err => sendResponse({ status: 'error', message: err.toString() }));
+      return true;
     }
   }
 
@@ -316,6 +322,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       state.isBusy = false;
       sendResponse({ status: 'error', message: err.toString() });
     });
+    return true;
   }
 
   if (message.action === 'CHECK_SINGLE_LINK') {
@@ -333,6 +340,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }).catch(err => {
       sendResponse({ status: 'error', message: err.toString() });
     });
+    return true;
   }
 
   if (message.action === 'EXTRACT_BATCH') {
@@ -510,6 +518,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } else {
       sendResponse({ status: 'error', message: 'No active queue to pause' });
     }
+    return false;
   }
 
   if (message.action === 'RESUME_QUEUE') {
@@ -612,6 +621,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
     } else {
       sendResponse({ status: 'error', message: 'No paused queue to resume' });
+      return false;
     }
   }
 
@@ -621,6 +631,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       progress: getProgress(state.activeQueue),
       isBusy: state.isBusy
     });
+    return false;
   }
 
   // ── Phase 8: Alarm Scheduling ────────────────────────────────────
@@ -758,16 +769,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   // ── Phase 8: Classify Actions ────────────────────────────────────
 
+  // Phase 8: Classify Actions (Sync)
   if (message.action === 'CLASSIFY_ALL') {
     const classified = state.bookmarks.map(b => ({
       id: b.id,
       action: classifyAction(b)
     }));
     sendResponse({ status: 'success', classified });
+    return false;
   }
 
-  // Ensure we return true if we want to send a response asynchronously later
-  return true;
+  return false;
 });
 
 console.log('[Service Worker] Initialized');

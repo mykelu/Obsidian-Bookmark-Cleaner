@@ -1147,27 +1147,43 @@ function updateQueueUI(p) {
 
 if (pauseQueueBtn) {
   pauseQueueBtn.addEventListener('click', async () => {
-  const r = await chrome.runtime.sendMessage({ action: 'PAUSE_QUEUE' });
-  if (r.status === 'success') { updateQueueUI(r.progress); addLog('Queue paused.', 'system'); }
-  else addLog(`Pause failed: ${r.message}`, 'error');
-});
+    try {
+      const r = await chrome.runtime.sendMessage({ action: 'PAUSE_QUEUE' });
+      if (r && r.status === 'success') {
+        updateQueueUI(r.progress);
+        addLog('Queue paused.', 'system');
+      } else if (r) {
+        addLog(`Pause failed: ${r.message}`, 'error');
+      }
+    } catch (e) {
+      addLog(`Pause error: ${e.message}`, 'error');
+    }
+  });
 }
 
 if (resumeQueueBtn) {
   resumeQueueBtn.addEventListener('click', async () => {
-  addLog('Resuming queue...', 'system');
-  startQueuePolling();
-  const r = await chrome.runtime.sendMessage({ action: 'RESUME_QUEUE' });
-  stopQueuePolling();
-  if (r.status === 'success' && r.bookmarks) {
-    currentBookmarks = r.bookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-    addLog('Queue completed after resume.', 'success');
-  } else if (r.status === 'error') {
-    addLog(`Resume failed: ${r.message}`, 'error');
-  }
-});
+    try {
+      addLog('Resuming queue...', 'system');
+      startQueuePolling();
+      const r = await chrome.runtime.sendMessage({ action: 'RESUME_QUEUE' });
+      stopQueuePolling();
+      
+      if (r && r.status === 'success') {
+        if (r.bookmarks) {
+          currentBookmarks = r.bookmarks;
+          updateSummaryCounts(currentBookmarks);
+          renderList(currentBookmarks);
+        }
+        addLog('Queue operation completed.', 'success');
+      } else if (r) {
+        addLog(`Resume failed: ${r.message}`, 'error');
+      }
+    } catch (e) {
+      stopQueuePolling();
+      addLog(`Resume error: ${e.message}`, 'error');
+    }
+  });
 }
 
 // ── Phase 8: Scheduled Rechecks ────────────────────────────────────
