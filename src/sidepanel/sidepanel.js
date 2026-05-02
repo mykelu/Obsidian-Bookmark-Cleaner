@@ -8,7 +8,7 @@ const appVersionEl = document.getElementById('app-version');
 const helpAppVersionEl = document.getElementById('help-app-version');
 
 // Scan DOM Elements
-const scanBtn = document.getElementById('btn-scan');
+const scanBtn = document.getElementById('btn-scan-all');
 const dedupeBtn = document.getElementById('btn-dedupe');
 const setupFoldersBtn = document.getElementById('btn-setup-folders');
 const exportJsonBtn = document.getElementById('btn-export-json');
@@ -301,7 +301,7 @@ btnToggleLogs.addEventListener('click', () => {
 scanBtn.addEventListener('click', async () => {
   scanBtn.disabled = true;
   scanBtn.textContent = 'Scanning...';
-  addLog('Starting bookmark dry-run scan...', 'system');
+  addLog('Starting bookmark bookmark scan...', 'system');
   
   try {
     const response = await chrome.runtime.sendMessage({ action: 'SCAN_BOOKMARKS' });
@@ -343,7 +343,7 @@ scanBtn.addEventListener('click', async () => {
     addLog(`Scan error: ${error.message}`, 'error');
   } finally {
     scanBtn.disabled = false;
-    scanBtn.textContent = 'Dry-Run Scan';
+    scanBtn.textContent = 'Start Scan';
   }
 });
 
@@ -844,7 +844,7 @@ obsTestBtn.addEventListener('click', async () => {
 
 obsSampleBtn.addEventListener('click', async () => {
   if (!currentBookmarks.length) {
-    addLog("No bookmarks available. Run a dry-run scan first.", 'error');
+    addLog("No bookmarks available. Run a bookmark scan first.", 'error');
     return;
   }
   

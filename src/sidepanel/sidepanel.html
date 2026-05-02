@@ -141,6 +141,7 @@
           <h3 style="font-size: 14px; margin-top: 0; margin-bottom: 12px;">Last Scan Results</h3>
           <div style="margin-bottom: 8px; font-weight: 600; font-size: 13px;">Total Bookmarks: <span id="summary-total">0</span></div>
           <ul id="summary-folders" class="folder-stats" style="list-style: none; padding: 0; margin: 0 0 12px 0; font-size: 12px;"></ul>
+          <div id="summary-breakdown" style="display: none; font-size: 11px; margin-bottom: 12px; color: var(--gray-mid); border-top: 1px solid var(--border-color); padding-top: 8px;"></div>
           <div id="summary-text" class="summary-text" style="margin-bottom: 16px; font-size: 12px; line-height: 1.4;"></div>
           <button id="btn-go-to-review-action" class="btn-primary" style="width: 100%;">Open Review Tab</button>
         </div>
@@ -179,6 +180,11 @@
             <option value="duplicate">Duplicate</option>
             <option value="delete-candidate">Delete Candidate (v0.8 policy)</option>
           </select>
+        </div>
+
+        <div id="review-cleanup-actions" class="actions" style="display: none; margin-bottom: 12px;">
+          <button id="btn-setup-folders" class="btn-secondary" title="Create safe review folders in Chrome">Setup Review Folders</button>
+          <button id="btn-move-dupes" class="btn-secondary" title="Move duplicates to the review folder">Move Duplicates</button>
         </div>
 
         <!-- Bulk Actions -->
@@ -307,6 +313,7 @@
               <button id="btn-dedupe" class="btn-secondary">Deduplicate Review Folder</button>
               <button id="btn-recheck-broken" class="btn-secondary">Recheck Broken Links</button>
               <button id="btn-export-json" class="btn-secondary">Export All to JSON</button>
+              <button id="btn-export-csv" class="btn-secondary">Export All to CSV</button>
             </div>
             
             <h4 style="margin: 0 0 8px 0; font-size: 12px;">Cleanup Tools</h4>
@@ -467,10 +474,9 @@
       <h3 id="preview-title" style="margin:0; font-size: 16px;">Extraction</h3>
       <button id="btn-close-preview" style="border-radius: 50%; width: 30px; height: 30px; padding: 0; display: flex; align-items: center; justify-content: center;">✕</button>
     </div>
-    <div id="preview-status" style="margin-bottom: 12px; font-size: 12px;"></div>
-    <div style="background: #f8f9fa; padding: 16px; border-radius: 8px; overflow-y: auto; height: calc(100% - 100px); border: 1px solid #eee;">
-      <pre id="preview-content" style="white-space: pre-wrap; word-wrap: break-word; font-family: monospace; font-size: 12px; margin: 0;"></pre>
-    </div>
+          <div id="preview-status" style="margin-bottom: 12px;"></div>
+          <div id="preview-warnings" style="display: none; color: var(--danger-color); font-size: 11px; margin-bottom: 12px;"></div>
+          <div id="preview-content" style="background: var(--gray-light); padding: 12px; border-radius: 4px; font-size: 12px; line-height: 1.6; max-height: 300px; overflow-y: auto; white-space: pre-wrap;"></div>
   </dialog>
 
   <dialog id="delete-confirm-modal" style="width: 90%; max-width: 500px; border-radius: 12px; border: none; padding: 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
