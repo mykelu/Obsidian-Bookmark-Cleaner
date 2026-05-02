@@ -9,6 +9,7 @@ const helpAppVersionEl = document.getElementById('help-app-version');
 
 // Scan DOM Elements
 const scanBtn = document.getElementById('btn-scan-all');
+const scanFolderRoot = document.getElementById('scan-folder-root');
 const dedupeBtn = document.getElementById('btn-dedupe');
 const setupFoldersBtn = document.getElementById('btn-setup-folders');
 const exportJsonBtn = document.getElementById('btn-export-json');
@@ -299,12 +300,16 @@ btnToggleLogs.addEventListener('click', () => {
 
 // Scan Bookmarks Logic
 scanBtn.addEventListener('click', async () => {
+  const rootId = scanFolderRoot.value || null;
   scanBtn.disabled = true;
   scanBtn.textContent = 'Scanning...';
-  addLog('Starting bookmark bookmark scan...', 'system');
+  addLog(`Starting ${rootId ? 'folder' : 'full'} bookmark scan...`, 'system');
   
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'SCAN_BOOKMARKS' });
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'SCAN_BOOKMARKS',
+      rootId: rootId
+    });
     if (response.status === 'success') {
       addLog(`Scan complete: found ${response.total} bookmarks.`, 'success');
       
@@ -1018,6 +1023,45 @@ clearLogsBtn.addEventListener('click', () => {
   addLog('Logs cleared.', 'system');
 });
 
+// ── Folder List Logic ───────────────────────────────────────────────
+
+async function loadFolderList() {
+  if (!scanFolderRoot) return;
+  
+  try {
+    const tree = await chrome.bookmarks.getTree();
+    const folders = [];
+    
+    function findFolders(nodes, path = []) {
+      nodes.forEach(node => {
+        if (node.children) {
+          const newPath = node.title ? [...path, node.title] : path;
+          if (node.id !== '0') { // Root of tree is invisible
+            folders.push({ id: node.id, path: newPath.join(' / ') || 'Root' });
+          }
+          findFolders(node.children, newPath);
+        }
+      });
+    }
+    
+    findFolders(tree);
+    
+    // Clear existing except first
+    while (scanFolderRoot.options.length > 1) {
+      scanFolderRoot.remove(1);
+    }
+    
+    folders.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = f.path;
+      scanFolderRoot.appendChild(opt);
+    });
+  } catch (e) {
+    console.error('Failed to load folders:', e);
+  }
+}
+
 // ── State Hydration on Panel Open ──────────────────────────────────
 
 (async () => {
@@ -1033,6 +1077,9 @@ clearLogsBtn.addEventListener('click', () => {
       showDiagnostics: false
     });
   }
+
+  // 1b. Load Folders
+  await loadFolderList();
 
   // 2. Proactive Health Check
   await checkServiceWorkerHealth();

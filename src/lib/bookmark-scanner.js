@@ -65,12 +65,20 @@ export async function flattenBookmarks(nodes, folderPath = []) {
 
 /**
  * Chrome API wrapper: get all bookmarks and flatten them.
+ * Optionally starts from a specific folder root.
  */
-export async function scanBookmarksTree() {
+export async function scanBookmarksTree(rootId = null) {
   return new Promise((resolve) => {
-    chrome.bookmarks.getTree(async (tree) => {
-      const flatList = await flattenBookmarks(tree);
-      resolve(flatList);
-    });
+    if (rootId) {
+      chrome.bookmarks.getSubTree(rootId, async (nodes) => {
+        const flatList = await flattenBookmarks(nodes);
+        resolve(flatList);
+      });
+    } else {
+      chrome.bookmarks.getTree(async (tree) => {
+        const flatList = await flattenBookmarks(tree);
+        resolve(flatList);
+      });
+    }
   });
 }

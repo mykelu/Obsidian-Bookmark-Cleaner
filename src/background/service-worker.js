@@ -150,7 +150,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'SCAN_BOOKMARKS') {
     state.isScanning = true;
     state.isBusy = true;
-    scanBookmarksTree().then(async (bookmarks) => {
+    scanBookmarksTree(message.rootId).then(async (bookmarks) => {
       state.bookmarks = bookmarks;
       state.isScanning = false;
       state.isBusy = false;
