@@ -52,6 +52,11 @@ const btnGoToScan = document.getElementById('btn-go-to-scan');
 const bulkActions = document.getElementById('bulk-actions');
 const reviewCleanupActions = document.getElementById('review-cleanup-actions');
 const searchResultsInfo = document.getElementById('search-results-info');
+const reviewStatusStrip = document.getElementById('review-status-strip');
+const reviewStatusTotal = document.getElementById('review-status-total');
+const reviewCheckedBar = document.getElementById('review-checked-bar');
+const reviewCheckedLabel = document.getElementById('review-checked-label');
+const reviewStatusBadges = document.getElementById('review-status-badges');
 const swLastCheckedEl = document.getElementById('sw-last-checked');
 const swLatencyEl = document.getElementById('sw-latency');
 const swVersionEl = document.getElementById('sw-version');
@@ -728,6 +733,30 @@ function updateSummaryCounts(bookmarks) {
       <span class="badge badge-hard-broken">Hard-Broken: ${counts['hard-broken']}</span>
       <span class="badge badge-duplicate">Duplicates: ${counts.duplicate}</span>
     `;
+  }
+
+  // Update Review tab status strip
+  const total = bookmarks.length;
+  const checked = total - (counts.pending || 0);
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+
+  if (reviewStatusStrip) reviewStatusStrip.style.display = total > 0 ? 'block' : 'none';
+  if (reviewStatusTotal) reviewStatusTotal.textContent = `${total} bookmarks`;
+  if (reviewCheckedBar) reviewCheckedBar.style.width = `${pct}%`;
+  if (reviewCheckedLabel) reviewCheckedLabel.textContent = `${pct}% checked (${checked} of ${total})`;
+  if (reviewStatusBadges) {
+    const badgeData = [
+      { key: 'healthy', label: '✅ Healthy', count: counts.healthy },
+      { key: 'redirected', label: '↗️ Redirected', count: counts.redirected },
+      { key: 'soft-broken', label: '⚠️ Soft-Broken', count: counts['soft-broken'] },
+      { key: 'hard-broken', label: '❌ Hard-Broken', count: counts['hard-broken'] },
+      { key: 'duplicate', label: '📋 Duplicates', count: counts.duplicate },
+      { key: 'pending', label: '⏳ Pending', count: counts.pending || 0 }
+    ];
+    reviewStatusBadges.innerHTML = badgeData
+      .filter(d => d.count > 0)
+      .map(d => `<span class="badge badge-${d.key}">${d.label}: ${d.count}</span>`)
+      .join('');
   }
 }
 

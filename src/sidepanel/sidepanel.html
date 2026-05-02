@@ -171,6 +171,21 @@
           <h2 style="margin: 0;">Review & Actions</h2>
         </div>
 
+        <!-- Status Overview Strip -->
+        <div id="review-status-strip" style="display: none; background: var(--gray-light); border-radius: 8px; padding: 12px; margin-bottom: 12px; font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-weight: 700; font-size: 12px;">📊 Status Overview</span>
+            <span id="review-status-total" style="color: var(--gray-mid);">0 bookmarks</span>
+          </div>
+          <!-- Progress bar: checked vs unchecked -->
+          <div style="background: #e0e0e0; border-radius: 4px; height: 6px; margin-bottom: 8px; overflow: hidden;">
+            <div id="review-checked-bar" style="height: 100%; border-radius: 4px; background: linear-gradient(90deg, #0a7a3b, #1a73e8); width: 0%; transition: width 0.3s;"></div>
+          </div>
+          <div id="review-checked-label" style="color: var(--gray-mid); margin-bottom: 6px;">0% checked</div>
+          <!-- Badge row -->
+          <div id="review-status-badges" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+        </div>
+
         <div class="search-bar">
           <span style="margin-right: 8px; opacity: 0.5;">🔍</span>
           <input type="text" id="input-search" placeholder="Search by title or URL...">
