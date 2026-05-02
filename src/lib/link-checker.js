@@ -4,7 +4,7 @@
  */
 
 export function isUnsupportedScheme(url) {
-  return /^(javascript|data|chrome|about|file|mailto):/i.test(url);
+  return /^(javascript|data|chrome|about|file|mailto|ftp):/i.test(url);
 }
 
 export function detectRedirect(response, originalUrl) {

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-05-05
+### Added
+- Link checking batching: Users can now process large bookmark collections in smaller chunks (50, 100, or 500 items) to improve performance and stability.
+### Fixed
+- Side panel stability: Hardened UI with defensive null-checks for all event listeners to prevent runtime crashes.
+- Background worker: Fixed a TypeError in the health check logic when calculating pending jobs.
+- Improved version tracking: Corrected version display in Side Panel and Help sections.
+
+## [1.0.1] - 2026-05-05
+
 ## [1.0.0] - 2026-05-02
 ### Added
 - Professional extension branding (Icons/Logo).

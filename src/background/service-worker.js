@@ -132,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[Service Worker] Received message:', message.action);
 
   if (message.action === 'HEALTH_CHECK') {
-    const pendingJobs = state.activeQueue ? (state.activeQueue.ids.length - state.activeQueue.cursor) : 0;
+    const pendingJobs = state.activeQueue ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
     sendResponse({
       ok: true,
       status: 'ok', // for backward compatibility
@@ -217,9 +217,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     state.isBusy = true;
 
     // Create a queue for link checking
-    const ids = state.bookmarks
-      .filter(b => b.status !== 'duplicate' && b.status !== 'healthy')
-      .map(b => b.id);
+    let eligible = state.bookmarks.filter(b => b.status !== 'duplicate' && b.status !== 'healthy');
+    
+    // Apply limit if requested
+    if (message.limit && message.limit > 0) {
+      eligible = eligible.slice(0, message.limit);
+    }
+    
+    const ids = eligible.map(b => b.id);
     state.activeQueue = createQueue(ids, 'check-links');
 
     (async () => {

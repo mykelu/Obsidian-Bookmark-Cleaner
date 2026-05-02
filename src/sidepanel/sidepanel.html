@@ -197,7 +197,15 @@
 
         <!-- Bulk Actions -->
         <div id="bulk-actions" class="actions" style="display: none; margin-top: 12px; border-top: 1px solid var(--border-color); padding-top: 12px;">
-          <button id="btn-check-links" title="Validate all unchecked links">Check Links</button>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <select id="check-batch-limit" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid var(--border-color);">
+              <option value="50">Next 50</option>
+              <option value="100">Next 100</option>
+              <option value="500">Next 500</option>
+              <option value="0" selected>All Items</option>
+            </select>
+            <button id="btn-check-links" title="Validate unchecked links in batches">Check Links</button>
+          </div>
           <button id="btn-extract-selected" title="Pull content from selected healthy links">Extract Selected</button>
           <button id="btn-capture-selected" title="Create notes in Obsidian">Capture to Obsidian</button>
         </div>

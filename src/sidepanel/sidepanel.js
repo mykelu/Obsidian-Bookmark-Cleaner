@@ -22,6 +22,7 @@ const statusFiltersContainer = document.getElementById('status-filters');
 const extractSelectedBtn = document.getElementById('btn-extract-selected');
 const captureSelectedBtn = document.getElementById('btn-capture-selected');
 const viewDeleteCandidatesBtn = document.getElementById('btn-view-delete-candidates');
+const checkBatchLimit = document.getElementById('check-batch-limit');
 
 // Phase 8: Queue Progress Elements
 const queueProgressCard = document.getElementById('queue-progress-card');
@@ -73,7 +74,7 @@ const previewStatus = document.getElementById('preview-status');
 const previewWarnings = document.getElementById('preview-warnings');
 const previewContent = document.getElementById('preview-content');
 
-btnClosePreview.addEventListener('click', () => previewModal.close());
+if (btnClosePreview) btnClosePreview.addEventListener('click', () => previewModal.close());
 
 // Note Preview Modal Elements
 const notePreviewModal = document.getElementById('note-preview-modal');
@@ -86,7 +87,7 @@ const btnCaptureFromPreview = document.getElementById('btn-capture-from-preview'
 
 let notePreviewCurrentId = null; // Track which bookmark is being previewed
 
-btnCloseNotePreview.addEventListener('click', () => notePreviewModal.close());
+if (btnCloseNotePreview) btnCloseNotePreview.addEventListener('click', () => notePreviewModal.close());
 
 const scanSummary = document.getElementById('scan-summary');
 const summaryTotal = document.getElementById('summary-total');
@@ -120,13 +121,17 @@ import { generateJsonBlob, generateCsvBlob } from '../lib/exporter.js';
 
 let currentBookmarks = []; // Keep a local reference for exports
 
+// Display version
+if (appVersionEl) appVersionEl.textContent = chrome.runtime.getManifest().version;
+if (helpAppVersionEl) helpAppVersionEl.textContent = chrome.runtime.getManifest().version;
+
 // Load Obsidian Settings
 chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
   if (result.obsidianSettings) {
-    obsUrlInput.value = result.obsidianSettings.baseUrl || 'https://127.0.0.1:27124';
-    obsKeyInput.value = result.obsidianSettings.apiKey || '';
-    obsFolderInput.value = result.obsidianSettings.destinationFolder || '03 Resources/Web Clips/Bookmarks/';
-    obsTemplateInput.value = result.obsidianSettings.filenameTemplate || '{title}.md';
+    if (obsUrlInput) obsUrlInput.value = result.obsidianSettings.baseUrl || 'https://127.0.0.1:27124';
+    if (obsKeyInput) obsKeyInput.value = result.obsidianSettings.apiKey || '';
+    if (obsFolderInput) obsFolderInput.value = result.obsidianSettings.destinationFolder || '03 Resources/Web Clips/Bookmarks/';
+    if (obsTemplateInput) obsTemplateInput.value = result.obsidianSettings.filenameTemplate || '{title}.md';
   }
   if (result.uiPrefs) {
     refreshUIByPrefs(result.uiPrefs);
@@ -135,10 +140,10 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
 
 function saveObsidianSettings() {
   const settings = {
-    baseUrl: obsUrlInput.value,
-    apiKey: obsKeyInput.value,
-    destinationFolder: obsFolderInput.value,
-    filenameTemplate: obsTemplateInput.value
+    baseUrl: obsUrlInput ? obsUrlInput.value : 'https://127.0.0.1:27124',
+    apiKey: obsKeyInput ? obsKeyInput.value : '',
+    destinationFolder: obsFolderInput ? obsFolderInput.value : '03 Resources/Web Clips/Bookmarks/',
+    filenameTemplate: obsTemplateInput ? obsTemplateInput.value : '{title}.md'
   };
   chrome.storage.local.set({ obsidianSettings: settings });
   return settings;
@@ -178,9 +183,9 @@ function switchTab(targetId) {
 }
 
 // Navigation Bridges
-btnGoToScanAction.addEventListener('click', () => switchTab('scan'));
-btnGoToReviewAction.addEventListener('click', () => switchTab('review'));
-btnSaveObsidian.addEventListener('click', () => {
+if (btnGoToScanAction) btnGoToScanAction.addEventListener('click', () => switchTab('scan'));
+if (btnGoToReviewAction) btnGoToReviewAction.addEventListener('click', () => switchTab('review'));
+if (btnSaveObsidian) btnSaveObsidian.addEventListener('click', () => {
   saveObsidianSettings();
   addLog('Obsidian settings saved.', 'success');
 });
@@ -212,9 +217,9 @@ function refreshUIByPrefs(prefs) {
 
 async function saveUIPrefs() {
   const prefs = {
-    showObsidian: toggleShowObsidian.checked,
-    showMaintenance: toggleShowMaintenance.checked,
-    showDiagnostics: toggleShowDiagnostics.checked
+    showObsidian: toggleShowObsidian ? toggleShowObsidian.checked : false,
+    showMaintenance: toggleShowMaintenance ? toggleShowMaintenance.checked : false,
+    showDiagnostics: toggleShowDiagnostics ? toggleShowDiagnostics.checked : false
   };
   await chrome.storage.local.set({ uiPrefs: prefs });
   refreshUIByPrefs(prefs);
@@ -287,19 +292,19 @@ async function checkServiceWorkerHealth(isManual = false) {
   }
 }
 
-healthCheckBtn.addEventListener('click', () => checkServiceWorkerHealth(true));
+if (healthCheckBtn) healthCheckBtn.addEventListener('click', () => checkServiceWorkerHealth(true));
 
 // Diagnostics Toggle
-btnToggleLogs.addEventListener('click', () => {
+if (btnToggleLogs) btnToggleLogs.addEventListener('click', () => {
   const isHidden = diagnosticsPanel.style.display === 'none';
   diagnosticsPanel.style.display = isHidden ? 'block' : 'none';
-  diagHiddenPlaceholder.style.display = isHidden ? 'none' : 'block';
+  if (diagHiddenPlaceholder) diagHiddenPlaceholder.style.display = isHidden ? 'none' : 'block';
   btnToggleLogs.textContent = isHidden ? 'Hide diagnostics' : 'Show diagnostics';
   addLog(isHidden ? 'Diagnostics shown.' : 'Diagnostics hidden.', 'system');
 });
 
 // Scan Bookmarks Logic
-scanBtn.addEventListener('click', async () => {
+if (scanBtn) scanBtn.addEventListener('click', async () => {
   const rootId = scanFolderRoot.value || null;
   scanBtn.disabled = true;
   scanBtn.textContent = 'Scanning...';
@@ -637,27 +642,27 @@ function updateSummaryCounts(bookmarks) {
 }
 
 // Filter status dropdown triggers a re-render
-filterStatus.addEventListener('change', () => {
+if (filterStatus) filterStatus.addEventListener('change', () => {
   renderList(currentBookmarks);
 });
 
-inputSearch.addEventListener('input', () => {
+if (inputSearch) inputSearch.addEventListener('input', () => {
   renderList(currentBookmarks);
 });
 
-btnGoToScan.addEventListener('click', () => {
+if (btnGoToScan) btnGoToScan.addEventListener('click', () => {
   switchTab('scan');
 });
 
 // Deduplication Logic
-dedupeBtn.addEventListener('click', async () => {
+if (dedupeBtn) dedupeBtn.addEventListener('click', async () => {
   addLog('Finding duplicates...', 'system');
   const response = await chrome.runtime.sendMessage({ action: 'DEDUPE_BOOKMARKS' });
   if (response.status === 'success') {
     addLog(`Found ${response.duplicateCount} duplicates.`, 'success');
     currentBookmarks = response.bookmarks;
     renderList(currentBookmarks);
-    if (response.duplicateCount > 0) {
+    if (response.duplicateCount > 0 && moveDupesBtn) {
       moveDupesBtn.disabled = false;
     }
   } else {
@@ -666,7 +671,7 @@ dedupeBtn.addEventListener('click', async () => {
 });
 
 // Setup Folders Logic
-setupFoldersBtn.addEventListener('click', async () => {
+if (setupFoldersBtn) setupFoldersBtn.addEventListener('click', async () => {
   addLog('Setting up review folders...', 'system');
   const response = await chrome.runtime.sendMessage({ action: 'SETUP_FOLDERS' });
   if (response.status === 'success') {
@@ -677,7 +682,7 @@ setupFoldersBtn.addEventListener('click', async () => {
 });
 
 // Move Dupes Logic
-moveDupesBtn.addEventListener('click', async () => {
+if (moveDupesBtn) moveDupesBtn.addEventListener('click', async () => {
   const checkedBoxes = document.querySelectorAll('.bookmark-select:checked');
   const idsToMove = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-id'));
   
@@ -713,14 +718,14 @@ function downloadBlobLocally(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-exportJsonBtn.addEventListener('click', () => {
+if (exportJsonBtn) exportJsonBtn.addEventListener('click', () => {
   if (!currentBookmarks.length) return;
   const blob = generateJsonBlob(currentBookmarks);
   downloadBlobLocally(blob, 'bookmarks_export.json');
   addLog('Exported JSON successfully.', 'success');
 });
 
-exportCsvBtn.addEventListener('click', () => {
+if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => {
   if (!currentBookmarks.length) return;
   const blob = generateCsvBlob(currentBookmarks);
   downloadBlobLocally(blob, 'bookmarks_export.csv');
@@ -728,13 +733,18 @@ exportCsvBtn.addEventListener('click', () => {
 });
 
 // Link Checking Logic
-checkLinksBtn.addEventListener('click', async () => {
-  addLog('Starting link check (this may take a while)...', 'system');
+if (checkLinksBtn) checkLinksBtn.addEventListener('click', async () => {
+  const limit = checkBatchLimit ? parseInt(checkBatchLimit.value) : 0;
+  addLog(`Starting link check (limit: ${limit || 'All'})...`, 'system');
+  
   checkLinksBtn.disabled = true;
   checkLinksBtn.textContent = 'Checking...';
   startQueuePolling();
   
-  const response = await chrome.runtime.sendMessage({ action: 'CHECK_LINKS' });
+  const response = await chrome.runtime.sendMessage({ 
+    action: 'CHECK_LINKS',
+    limit: limit
+  });
   stopQueuePolling();
   if (response.status === 'success') {
     addLog('Finished checking links.', 'success');
@@ -751,8 +761,10 @@ checkLinksBtn.addEventListener('click', async () => {
 
 recheckBrokenBtn.addEventListener('click', async () => {
   addLog('Rechecking soft-broken links...', 'system');
-  recheckBrokenBtn.disabled = true;
-  recheckBrokenBtn.textContent = 'Rechecking...';
+  if (recheckBrokenBtn) {
+    recheckBrokenBtn.disabled = true;
+    recheckBrokenBtn.textContent = 'Rechecking...';
+  }
   
   const response = await chrome.runtime.sendMessage({ action: 'RECHECK_BROKEN' });
   if (response.status === 'success') {
@@ -764,8 +776,10 @@ recheckBrokenBtn.addEventListener('click', async () => {
     addLog(`Recheck failed: ${response.message}`, 'error');
   }
   
-  recheckBrokenBtn.disabled = false;
-  recheckBrokenBtn.textContent = 'Recheck Broken';
+  if (recheckBrokenBtn) {
+    recheckBrokenBtn.disabled = false;
+    recheckBrokenBtn.textContent = 'Recheck Broken';
+  }
 });
 
 // --- Obsidian API Logic ---
@@ -1111,7 +1125,5 @@ async function loadFolderList() {
 })();
 
 // Initial greeting
-const manifest = chrome.runtime.getManifest();
-if (appVersionEl) appVersionEl.textContent = manifest.version;
-if (helpAppVersionEl) helpAppVersionEl.textContent = manifest.version;
-addLog(`Side panel loaded (v${manifest.version}).`, 'system');
+const manifest_data = chrome.runtime.getManifest();
+addLog(`Side panel loaded (v${manifest_data.version}).`, 'system');
