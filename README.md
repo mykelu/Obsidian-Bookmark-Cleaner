@@ -1,4 +1,4 @@
-# Obsidian Bookmark Cleaner (v1.0.0)
+# Obsidian Bookmark Cleaner (v1.0.2 Stable)
 
 **Obsidian Bookmark Cleaner** is a powerful Chrome Extension (Manifest V3) designed for knowledge workers, researchers, and anyone who wants to turn their massive bookmark collection into an organized, actionable knowledge base.
 
@@ -14,6 +14,8 @@ It helps you scan your bookmarks, identify broken or duplicate links, and seamle
 - **Safe Review Workflow:** Move potential delete candidates to a dedicated `_Obsidian Cleaner` folder for safe review before removal.
 - **Content Extraction:** Uses a secure offscreen document and a custom Readability adapter to extract clean page content (titles, descriptions, body text).
 - **Obsidian Sync:** Captures bookmarked pages directly into your Obsidian vault as Markdown notes with YAML frontmatter.
+- **Batch Processing:** Optimized for large collections (4000+ items) with configurable batch limits (50, 100, 500) to ensure UI responsiveness.
+- **Stability Hardened:** Every UI interaction is guarded with defensive null-checks, ensuring zero runtime crashes even during heavy background tasks.
 - **Local-First & Private:** All processing happens in your browser. No external tracking, no third-party servers.
 
 ## 🛠 Why Use This?
