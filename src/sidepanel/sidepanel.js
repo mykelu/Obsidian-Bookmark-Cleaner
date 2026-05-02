@@ -57,6 +57,7 @@ const reviewStatusTotal = document.getElementById('review-status-total');
 const reviewCheckedBar = document.getElementById('review-checked-bar');
 const reviewCheckedLabel = document.getElementById('review-checked-label');
 const reviewStatusBadges = document.getElementById('review-status-badges');
+const reviewRecommendation = document.getElementById('review-recommendation');
 const swLastCheckedEl = document.getElementById('sw-last-checked');
 const swLatencyEl = document.getElementById('sw-latency');
 const swVersionEl = document.getElementById('sw-version');
@@ -379,10 +380,9 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
       if (exportCsvBtn) exportCsvBtn.disabled = false;
       if (checkLinksBtn) checkLinksBtn.disabled = false;
       if (recheckBrokenBtn) recheckBrokenBtn.disabled = false;
-      if (extractSelectedBtn) extractSelectedBtn.disabled = false;
-      if (captureSelectedBtn) captureSelectedBtn.disabled = false;
       if (viewDeleteCandidatesBtn) viewDeleteCandidatesBtn.disabled = false;
       
+      // Bulk extract/capture are handled by updateBulkActionButtons based on selection
     } else {
       addLog(`Scan failed: ${response.message}`, 'error');
     }
@@ -490,6 +490,11 @@ function renderList(bookmarks) {
       </div>
     `;
     bookmarkListContainer.appendChild(div);
+  });
+
+  // Attach Checkbox Listeners for Bulk Actions
+  document.querySelectorAll('.bookmark-select').forEach(cb => {
+    cb.addEventListener('change', updateBulkActionButtons);
   });
   
   if (filtered.length > 100) {
@@ -626,6 +631,7 @@ if (extractSelectedBtn) {
   const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids });
   if (response.status === 'success') {
     currentBookmarks = response.allBookmarks;
+    updateSummaryCounts(currentBookmarks);
     renderList(currentBookmarks);
     addLog('Batch extraction completed.', 'success');
   } else {
@@ -633,7 +639,7 @@ if (extractSelectedBtn) {
   }
   
   extractSelectedBtn.disabled = false;
-  extractSelectedBtn.textContent = 'Extract Selected';
+  updateBulkActionButtons();
 });
 }
 
@@ -654,6 +660,7 @@ if (captureSelectedBtn) {
   const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids });
   if (response.status === 'success') {
     currentBookmarks = response.allBookmarks;
+    updateSummaryCounts(currentBookmarks);
     renderList(currentBookmarks);
     
     if (response.results) {
@@ -670,7 +677,7 @@ if (captureSelectedBtn) {
   }
   
   captureSelectedBtn.disabled = false;
-  captureSelectedBtn.textContent = 'Capture to Obsidian';
+  updateBulkActionButtons();
 });
 }
 
@@ -679,7 +686,32 @@ if (checkboxSelectAll) {
   checkboxSelectAll.addEventListener('change', () => {
     const checkboxes = document.querySelectorAll('.bookmark-select');
     checkboxes.forEach(cb => { cb.checked = checkboxSelectAll.checked; });
+    updateBulkActionButtons();
   });
+}
+
+function updateBulkActionButtons() {
+  const selected = document.querySelectorAll('.bookmark-select:checked');
+  const selectedIds = Array.from(selected).map(cb => cb.getAttribute('data-id'));
+  const selectedBookmarks = selectedIds.map(id => currentBookmarks.find(b => b.id === id)).filter(Boolean);
+
+  const canExtractCount = selectedBookmarks.filter(b => b.status === 'healthy' || b.status === 'redirected').length;
+  const canCaptureCount = selectedBookmarks.filter(b => b.status === 'healthy' || b.status === 'redirected').length;
+  const canCheckCount = selectedBookmarks.length; // Can re-check anything selected
+  const canDeleteCount = selectedBookmarks.length;
+
+  if (extractSelectedBtn) {
+    extractSelectedBtn.disabled = canExtractCount === 0;
+    extractSelectedBtn.innerHTML = `Extract Selected ${canExtractCount > 0 ? `(${canExtractCount})` : ''}`;
+  }
+  if (captureSelectedBtn) {
+    captureSelectedBtn.disabled = canCaptureCount === 0;
+    captureSelectedBtn.innerHTML = `Capture to Obsidian ${canCaptureCount > 0 ? `(${canCaptureCount})` : ''}`;
+  }
+  if (btnDeleteSelected) {
+    btnDeleteSelected.disabled = canDeleteCount === 0;
+    btnDeleteSelected.innerHTML = `Delete Selected ${canDeleteCount > 0 ? `(${canDeleteCount})` : ''}`;
+  }
 }
 
 // Delete Selected button logic
@@ -758,6 +790,29 @@ function updateSummaryCounts(bookmarks) {
       .map(d => `<span class="badge badge-${d.key}">${d.label}: ${d.count}</span>`)
       .join('');
   }
+
+  if (reviewRecommendation) {
+    let rec = '';
+    if (counts.pending > 0) {
+      rec = '💡 <strong>Next Step:</strong> Click <strong>"Check Links"</strong> to verify which bookmarks are still active.';
+    } else if (counts.healthy > 0 || counts.redirected > 0) {
+      const healthyTotal = counts.healthy + counts.redirected;
+      const extracted = bookmarks.filter(b => (b.status === 'healthy' || b.status === 'redirected') && b.extractedData).length;
+      if (extracted < healthyTotal) {
+        rec = `💡 <strong>Next Step:</strong> Select healthy links and click <strong>"Extract Content"</strong> to prepare notes.`;
+      } else {
+        rec = `💡 <strong>Next Step:</strong> Select items and click <strong>"Capture to Obsidian"</strong> to sync with your vault.`;
+      }
+    } else if (counts['hard-broken'] > 0 || counts.duplicate > 0) {
+      rec = `💡 <strong>Next Step:</strong> Review broken links or duplicates and use <strong>"Delete Selected"</strong> to clean up.`;
+    } else {
+      rec = `✨ All caught up! Your bookmarks are clean and synced.`;
+    }
+    reviewRecommendation.innerHTML = rec;
+  }
+  
+  // Update buttons based on current state
+  updateBulkActionButtons();
 }
 
 // Filter status dropdown triggers a re-render
