@@ -564,6 +564,7 @@ if (btnCaptureFromPreview) {
   btnCaptureFromPreview.disabled = false;
   btnCaptureFromPreview.textContent = 'Write to Obsidian';
 });
+}
 
 // Bulk Extract logic
 if (extractSelectedBtn) {
@@ -588,6 +589,7 @@ if (extractSelectedBtn) {
   extractSelectedBtn.disabled = false;
   extractSelectedBtn.textContent = 'Extract Selected';
 });
+}
 
 // Bulk Capture logic
 if (captureSelectedBtn) {
@@ -621,6 +623,7 @@ if (captureSelectedBtn) {
   captureSelectedBtn.disabled = false;
   captureSelectedBtn.textContent = 'Capture to Obsidian';
 });
+}
 
 function updateSummaryCounts(bookmarks) {
   if (!bookmarks) return;
@@ -792,6 +795,7 @@ if (recheckBrokenBtn) {
     recheckBrokenBtn.textContent = 'Recheck Broken';
   }
 });
+}
 
 // --- Obsidian API Logic ---
 
@@ -876,6 +880,7 @@ if (obsTestBtn) {
     if (obsSampleBtn) obsSampleBtn.disabled = true;
   }
 });
+}
 
 if (obsSampleBtn) {
   obsSampleBtn.addEventListener('click', async () => {
@@ -917,6 +922,7 @@ if (obsSampleBtn) {
     addLog(`Note creation failed: ${error.message}`, 'error');
   }
 });
+}
 
 // ── Phase 8: Queue Progress Polling ────────────────────────────────
 
@@ -956,6 +962,7 @@ if (pauseQueueBtn) {
   if (r.status === 'success') { updateQueueUI(r.progress); addLog('Queue paused.', 'system'); }
   else addLog(`Pause failed: ${r.message}`, 'error');
 });
+}
 
 if (resumeQueueBtn) {
   resumeQueueBtn.addEventListener('click', async () => {
@@ -972,6 +979,7 @@ if (resumeQueueBtn) {
     addLog(`Resume failed: ${r.message}`, 'error');
   }
 });
+}
 
 // ── Phase 8: Scheduled Rechecks ────────────────────────────────────
 
@@ -984,6 +992,7 @@ if (scheduleRecheckBtn) {
     addLog(`Recheck alarm scheduled (every ${mins} min).`, 'success');
   }
 });
+}
 
 if (cancelRecheckBtn) {
   cancelRecheckBtn.addEventListener('click', async () => {
@@ -991,6 +1000,7 @@ if (cancelRecheckBtn) {
   recheckStatusEl.textContent = 'No recheck scheduled.';
   addLog('Recheck alarm cancelled.', 'system');
 });
+}
 
 // Load alarm status on panel open
 (async () => {
@@ -1024,6 +1034,7 @@ if (viewDeleteCandidatesBtn) {
     addLog(`Failed to load candidates: ${r.message}`, 'error');
   }
 });
+}
 
 if (btnCloseDeleteModal) btnCloseDeleteModal.addEventListener('click', () => deleteConfirmModal && deleteConfirmModal.close());
 if (btnCancelDelete) btnCancelDelete.addEventListener('click', () => deleteConfirmModal && deleteConfirmModal.close());
@@ -1052,6 +1063,7 @@ if (btnConfirmDelete) {
   btnConfirmDelete.textContent = 'Yes, Delete Permanently';
   deleteConfirmModal.close();
 });
+}
 
 // ── Phase 8: Clear Logs ────────────────────────────────────────────
 
@@ -1060,6 +1072,7 @@ if (clearLogsBtn) {
   logContainer.innerHTML = '';
   addLog('Logs cleared.', 'system');
 });
+}
 
 // ── Folder List Logic ───────────────────────────────────────────────
 
