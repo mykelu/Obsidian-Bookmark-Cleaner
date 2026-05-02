@@ -31,6 +31,7 @@ const queueBar = document.getElementById('queue-bar');
 const queueStats = document.getElementById('queue-stats');
 const pauseQueueBtn = document.getElementById('btn-pause-queue');
 const resumeQueueBtn = document.getElementById('btn-resume-queue');
+const queuePercentEl = document.getElementById('queue-percent');
 
 // Phase 8: Recheck Scheduling Elements
 const recheckIntervalSelect = document.getElementById('recheck-interval');
@@ -960,7 +961,8 @@ function updateQueueUI(p) {
   queueProgressCard.style.display = 'block';
   const pct = Math.round(((p.done + p.failed) / p.total) * 100);
   queueTypeEl.textContent = `Operation: ${p.type || 'unknown'}`;
-  queueBar.style.width = `${pct}%`;
+  if (queueBar) queueBar.style.width = `${pct}%`;
+  if (queuePercentEl) queuePercentEl.textContent = `${pct}%`;
   queueStats.textContent = `Done: ${p.done} | Failed: ${p.failed} | Remaining: ${p.remaining} | ${p.paused ? '⏸ Paused' : '▶ Running'}`;
   pauseQueueBtn.disabled = p.paused;
   resumeQueueBtn.disabled = !p.paused;
