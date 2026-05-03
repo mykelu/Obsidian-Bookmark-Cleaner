@@ -225,7 +225,15 @@ export function generateNotePath(bookmark, settings = {}) {
   const ext = bookmark.extractedData || {};
   const rawTitle = ext.title || bookmark.title || '';
   const template = settings.filenameTemplate || '{title}.md';
-  const folder = (settings.destinationFolder || 'Bookmarks').replace(/\/+$/, '');
+  
+  // Clean the folder path: 
+  // 1. Convert backslashes to forward slashes
+  // 2. Remove leading/trailing slashes
+  // 3. Collapse multiple slashes
+  let folder = (settings.destinationFolder || 'Bookmarks')
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\/+/g, '/');
 
   let safeTitle = sanitizeFilename(rawTitle);
 
@@ -243,5 +251,5 @@ export function generateNotePath(bookmark, settings = {}) {
 
   const filename = template.replace('{title}', safeTitle);
 
-  return `${folder}/${filename}`;
+  return folder ? `${folder}/${filename}` : filename;
 }

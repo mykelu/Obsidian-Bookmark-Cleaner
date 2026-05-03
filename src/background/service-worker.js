@@ -25,7 +25,8 @@ const state = {
   isBusy: false, // Prevents concurrent batch operations
   bookmarks: [],
   reviewFolders: null,
-  activeQueue: null // Current task queue
+  activeQueue: null, // Current task queue
+  isHydrated: false // Tracks if storage load is complete
 };
 
 /**
@@ -60,6 +61,8 @@ async function hydrateState() {
     }
   } catch (e) {
     console.error('[Service Worker] State hydration failed:', e);
+  } finally {
+    state.isHydrated = true;
   }
 }
 
@@ -126,10 +129,16 @@ chrome.sidePanel
 // ── Message Handling ─────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Skip messages targeted at the offscreen document
-  if (message.target === 'offscreen') return false;
+  // Ensure state is hydrated before processing any messages
+  if (!state.isHydrated && message.action !== 'HEALTH_CHECK') {
+    hydrateState().then(() => {
+      // Re-run the listener logic or just return error
+      sendResponse({ status: 'error', message: 'Service worker is still hydrating. Please try again in a moment.' });
+    });
+    return true;
+  }
 
-  console.log('[Service Worker] Received message:', message.action);
+  // Skip messages targeted at the offscreen document
 
   if (message.action === 'HEALTH_CHECK') {
     const pendingJobs = (state.activeQueue && state.activeQueue.items) ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
@@ -143,6 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       message: state.isBusy ? 'Processing queue...' : 'Idle',
       state: state.settings,
       hasBookmarks: state.bookmarks.length > 0,
+      bookmarks: state.bookmarks, // RETURN THE BOOKMARKS!
       hasQueue: !!state.activeQueue && !isComplete(state.activeQueue),
       isBusy: state.isBusy,
       isScanning: state.isScanning
@@ -183,7 +193,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             capturedContentHash: existing.capturedContentHash
           };
         }
-        return fresh;
+        return { ...fresh, status: 'pending' };
       });
 
       state.bookmarks = merged;
@@ -575,6 +585,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const baseUrl = settings.baseUrl || settings.obsidianBaseUrl;
             const apiKey = settings.apiKey;
 
+            const results = [];
             while (true) {
               const id = dequeue(state.activeQueue);
               if (id === null) break;
@@ -583,35 +594,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 try {
                   const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
                   const exists = await noteExists(baseUrl, apiKey, notePath);
+                  let action = '';
                   if (exists && bookmark.capturedContentHash === contentHash) {
                     bookmark.captureStatus = 'skipped';
+                    action = 'skipped';
                   } else {
                     if (exists) await updateNote(baseUrl, apiKey, notePath, noteContent);
                     else await createNote(baseUrl, apiKey, notePath, noteContent);
                     bookmark.captureStatus = exists ? 'updated' : 'created';
+                    action = bookmark.captureStatus;
                   }
                   bookmark.capturedAt = capturedAt;
                   bookmark.capturedNotePath = notePath;
                   bookmark.capturedContentHash = contentHash;
                   markDone(state.activeQueue, id);
+                  results.push({ id, action, notePath });
                 } catch (e) {
                   bookmark.captureStatus = 'failed';
+                  bookmark.captureError = e.toString();
                   markFailed(state.activeQueue, id, e.toString());
+                  results.push({ id, action: 'failed', reason: e.toString() });
                 }
               } else {
                 markFailed(state.activeQueue, id, 'Missing data or key');
+                results.push({ id, action: 'failed', reason: 'Missing data or key' });
               }
               if (state.activeQueue.cursor % 5 === 0) {
                 saveBookmarks(state.bookmarks);
                 await saveQueueState(serializeQueueState(state.activeQueue));
               }
             }
+            await saveBookmarksNow(state.bookmarks);
+            await clearQueueState();
+            state.activeQueue = null;
+            sendResponse({ status: 'success', allBookmarks: state.bookmarks, results });
+            return; // Exit after async sendResponse
           }
-
-          await saveBookmarksNow(state.bookmarks);
-          await clearQueueState();
-          state.activeQueue = null;
-          sendResponse({ status: 'success', bookmarks: state.bookmarks });
         } catch (err) {
           sendResponse({ status: 'error', message: err.toString() });
         } finally {

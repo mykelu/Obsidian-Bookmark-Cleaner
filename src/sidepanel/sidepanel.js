@@ -456,7 +456,8 @@ function renderList(bookmarks) {
       detailsHtml = `<div style="font-size: 10px; color: #666; margin-top: 4px; border-top: 1px dashed #ccc; padding-top: 4px;">`;
       if (b.finalUrl && b.finalUrl !== b.url) detailsHtml += `<div><strong>Final URL:</strong> <span style="word-break: break-all;">${b.finalUrl}</span></div>`;
       if (b.httpStatus) detailsHtml += `<div><strong>HTTP:</strong> ${b.httpStatus}</div>`;
-      if (b.error) detailsHtml += `<div><strong>Reason:</strong> ${b.error} (retries: ${b.attempts ? b.attempts - 1 : 0})</div>`;
+      if (b.error) detailsHtml += `<div><strong>Link Reason:</strong> ${b.error} (retries: ${b.attempts ? b.attempts - 1 : 0})</div>`;
+      if (b.captureError) detailsHtml += `<div style="color: #c92a2a;"><strong>Capture Error:</strong> ${b.captureError}</div>`;
       if (b.extractedData) {
         const wordCount = b.extractedData.plainText ? b.extractedData.plainText.split(/\s+/).length : 0;
         const eStatus = b.extractionStatus || 'success';
@@ -515,12 +516,18 @@ function renderList(bookmarks) {
       const id = e.target.getAttribute('data-id');
       e.target.disabled = true;
       e.target.textContent = '...';
-      const response = await chrome.runtime.sendMessage({ action: 'CHECK_SINGLE_LINK', id });
-      if (response.status === 'success') {
-        currentBookmarks = response.allBookmarks;
-        renderList(currentBookmarks);
-      } else {
-        addLog(`Recheck failed: ${response.message}`, 'error');
+      try {
+        const response = await chrome.runtime.sendMessage({ action: 'CHECK_SINGLE_LINK', id });
+        if (response && response.status === 'success') {
+          currentBookmarks = response.allBookmarks;
+          renderList(currentBookmarks);
+        } else if (response) {
+          addLog(`Recheck failed: ${response.message}`, 'error');
+          e.target.disabled = false;
+          e.target.textContent = 'Recheck';
+        }
+      } catch (err) {
+        addLog(`Recheck error: ${err.message}`, 'error');
         e.target.disabled = false;
         e.target.textContent = 'Recheck';
       }
@@ -533,13 +540,19 @@ function renderList(bookmarks) {
       const id = e.target.getAttribute('data-id');
       e.target.disabled = true;
       e.target.textContent = 'Extracting...';
-      const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids: [id] });
-      if (response.status === 'success') {
-        currentBookmarks = response.allBookmarks;
-        addLog(`Successfully extracted content for bookmark ${id}.`, 'success');
-        renderList(currentBookmarks);
-      } else {
-        addLog(`Extraction failed: ${response.message}`, 'error');
+      try {
+        const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids: [id] });
+        if (response && response.status === 'success') {
+          currentBookmarks = response.allBookmarks;
+          addLog(`Successfully extracted content for bookmark ${id}.`, 'success');
+          renderList(currentBookmarks);
+        } else if (response) {
+          addLog(`Extraction failed: ${response.message}`, 'error');
+          e.target.disabled = false;
+          e.target.textContent = 'Extract Content';
+        }
+      } catch (err) {
+        addLog(`Extraction error: ${err.message}`, 'error');
         e.target.disabled = false;
         e.target.textContent = 'Extract Content';
       }
@@ -571,17 +584,21 @@ function renderList(bookmarks) {
       e.target.disabled = true;
       e.target.textContent = '...';
       
-      const response = await chrome.runtime.sendMessage({ action: 'PREVIEW_NOTE', id });
-      if (response.status === 'success') {
-        notePreviewCurrentId = id;
-        notePreviewHeading.textContent = 'Note Preview';
-        notePreviewPath.textContent = `📁 Path: ${response.notePath}`;
-        notePreviewAction.textContent = response.willUpdate ? '⚡ Action: UPDATE existing note' : '✨ Action: CREATE new note';
-        notePreviewAction.style.color = response.willUpdate ? '#1a73e8' : '#0a7a3b';
-        notePreviewBody.textContent = response.noteContent;
-        notePreviewModal.showModal();
-      } else {
-        addLog(`Note preview failed: ${response.message}`, 'error');
+      try {
+        const response = await chrome.runtime.sendMessage({ action: 'PREVIEW_NOTE', id });
+        if (response && response.status === 'success') {
+          notePreviewCurrentId = id;
+          notePreviewHeading.textContent = 'Note Preview';
+          notePreviewPath.textContent = `📁 Path: ${response.notePath}`;
+          notePreviewAction.textContent = response.willUpdate ? '⚡ Action: UPDATE existing note' : '✨ Action: CREATE new note';
+          notePreviewAction.style.color = response.willUpdate ? '#1a73e8' : '#0a7a3b';
+          notePreviewBody.textContent = response.noteContent;
+          notePreviewModal.showModal();
+        } else if (response) {
+          addLog(`Note preview failed: ${response.message}`, 'error');
+        }
+      } catch (err) {
+        addLog(`Note preview error: ${err.message}`, 'error');
       }
       
       e.target.disabled = false;
@@ -598,22 +615,26 @@ if (btnCaptureFromPreview) {
   btnCaptureFromPreview.disabled = true;
   btnCaptureFromPreview.textContent = 'Writing...';
   
-  const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [notePreviewCurrentId] });
-  if (response.status === 'success') {
-    const result = response.results[0];
-    if (result.action === 'created' || result.action === 'updated') {
-      addLog(`Note ${result.action}: ${result.notePath}`, 'success');
-    } else if (result.action === 'skipped') {
-      addLog(`Note skipped (unchanged): ${result.notePath}`, 'info');
-    } else {
-      addLog(`Note failed: ${result.reason}`, 'error');
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [notePreviewCurrentId] });
+      if (response && response.status === 'success') {
+        const result = response.results[0];
+        if (result.action === 'created' || result.action === 'updated') {
+          addLog(`Note ${result.action}: ${result.notePath}`, 'success');
+        } else if (result.action === 'skipped') {
+          addLog(`Note skipped (unchanged): ${result.notePath}`, 'info');
+        } else {
+          addLog(`Note failed: ${result.reason}`, 'error');
+        }
+        currentBookmarks = response.allBookmarks;
+        renderList(currentBookmarks);
+        notePreviewModal.close();
+      } else if (response) {
+        addLog(`Capture failed: ${response.message}`, 'error');
+      }
+    } catch (err) {
+      addLog(`Capture error: ${err.message}`, 'error');
     }
-    currentBookmarks = response.allBookmarks;
-    renderList(currentBookmarks);
-    notePreviewModal.close();
-  } else {
-    addLog(`Capture failed: ${response.message}`, 'error');
-  }
   
   btnCaptureFromPreview.disabled = false;
   btnCaptureFromPreview.textContent = 'Write to Obsidian';
@@ -630,17 +651,21 @@ if (extractSelectedBtn) {
   setGlobalBusy(true, 'Extracting...');
   addLog(`Sending ${ids.length} bookmarks for batch extraction...`, 'info');
   
-  const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids });
-  if (response.status === 'success') {
-    currentBookmarks = response.allBookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-    addLog('Batch extraction completed.', 'success');
-  } else {
-    addLog(`Batch extraction error: ${response.message}`, 'error');
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'EXTRACT_BATCH', ids });
+    if (response && response.status === 'success') {
+      currentBookmarks = response.allBookmarks;
+      updateSummaryCounts(currentBookmarks);
+      renderList(currentBookmarks);
+      addLog('Batch extraction completed.', 'success');
+    } else if (response) {
+      addLog(`Batch extraction error: ${response.message}`, 'error');
+    }
+  } catch (err) {
+    addLog(`Batch extraction error: ${err.message}`, 'error');
+  } finally {
+    setGlobalBusy(false);
   }
-  
-  setGlobalBusy(false);
 });
 }
 
@@ -657,26 +682,38 @@ if (captureSelectedBtn) {
   setGlobalBusy(true, 'Capturing...');
   addLog(`Capturing ${ids.length} bookmarks to Obsidian...`, 'info');
   
-  const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids });
-  if (response.status === 'success') {
-    currentBookmarks = response.allBookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-    
-    if (response.results) {
-      const created = response.results.filter(r => r.action === 'created').length;
-      const updated = response.results.filter(r => r.action === 'updated').length;
-      const skipped = response.results.filter(r => r.action === 'skipped').length;
-      const failed = response.results.filter(r => r.action === 'failed').length;
-      addLog(`Capture complete: ${created} created, ${updated} updated, ${skipped} skipped, ${failed} failed.`, 'success');
-    } else {
-      addLog('Capture complete.', 'success');
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids });
+    if (response && response.status === 'success') {
+      currentBookmarks = response.allBookmarks;
+      updateSummaryCounts(currentBookmarks);
+      renderList(currentBookmarks);
+      
+      if (response.results && response.results.length > 0) {
+        const created = response.results.filter(r => r.action === 'created');
+        const updated = response.results.filter(r => r.action === 'updated');
+        const skipped = response.results.filter(r => r.action === 'skipped');
+        const failed = response.results.filter(r => r.action === 'failed');
+        
+        addLog(`Capture complete: ${created.length} created, ${updated.length} updated, ${skipped.length} skipped, ${failed.length} failed.`, 'success');
+        
+        // Show the first couple of paths to help the user find them
+        const successful = [...created, ...updated];
+        if (successful.length > 0) {
+          const samplePaths = successful.slice(0, 3).map(r => `• ${r.notePath}`).join('<br>');
+          addLog(`Sample locations:<br>${samplePaths}${successful.length > 3 ? '<br>• ...and more' : ''}`, 'info');
+        }
+      } else {
+        addLog('Capture complete. No notes were processed.', 'info');
+      }
+    } else if (response) {
+      addLog(`Capture error: ${response.message}`, 'error');
     }
-  } else {
-    addLog(`Capture error: ${response.message}`, 'error');
+  } catch (err) {
+    addLog(`Capture error: ${err.message}`, 'error');
+  } finally {
+    setGlobalBusy(false);
   }
-  
-  setGlobalBusy(false);
 });
 }
 
@@ -833,28 +870,36 @@ if (btnGoToScan) btnGoToScan.addEventListener('click', () => {
 
 // Deduplication Logic
 if (dedupeBtn) dedupeBtn.addEventListener('click', async () => {
-  addLog('Finding duplicates...', 'system');
-  const response = await chrome.runtime.sendMessage({ action: 'DEDUPE_BOOKMARKS' });
-  if (response.status === 'success') {
-    addLog(`Found ${response.duplicateCount} duplicates.`, 'success');
-    currentBookmarks = response.bookmarks;
-    renderList(currentBookmarks);
-    if (response.duplicateCount > 0 && moveDupesBtn) {
-      moveDupesBtn.disabled = false;
+  try {
+    addLog('Finding duplicates...', 'system');
+    const response = await chrome.runtime.sendMessage({ action: 'DEDUPE_BOOKMARKS' });
+    if (response && response.status === 'success') {
+      addLog(`Found ${response.duplicateCount} duplicates.`, 'success');
+      currentBookmarks = response.bookmarks;
+      renderList(currentBookmarks);
+      if (response.duplicateCount > 0 && moveDupesBtn) {
+        moveDupesBtn.disabled = false;
+      }
+    } else if (response) {
+      addLog(`Dedupe failed: ${response.message}`, 'error');
     }
-  } else {
-    addLog(`Dedupe failed: ${response.message}`, 'error');
+  } catch (e) {
+    addLog(`Dedupe error: ${e.message}`, 'error');
   }
 });
 
 // Setup Folders Logic
 if (setupFoldersBtn) setupFoldersBtn.addEventListener('click', async () => {
-  addLog('Setting up review folders...', 'system');
-  const response = await chrome.runtime.sendMessage({ action: 'SETUP_FOLDERS' });
-  if (response.status === 'success') {
-    addLog('Review folders created/verified successfully.', 'success');
-  } else {
-    addLog(`Setup failed: ${response.message}`, 'error');
+  try {
+    addLog('Setting up review folders...', 'system');
+    const response = await chrome.runtime.sendMessage({ action: 'SETUP_FOLDERS' });
+    if (response && response.status === 'success') {
+      addLog('Review folders created/verified successfully.', 'success');
+    } else if (response) {
+      addLog(`Setup failed: ${response.message}`, 'error');
+    }
+  } catch (e) {
+    addLog(`Setup error: ${e.message}`, 'error');
   }
 });
 
@@ -868,20 +913,23 @@ if (moveDupesBtn) moveDupesBtn.addEventListener('click', async () => {
     return;
   }
   
-  addLog(`Moving ${idsToMove.length} items to _Review Duplicates...`, 'system');
-  const response = await chrome.runtime.sendMessage({ 
-    action: 'MOVE_BOOKMARKS', 
-    bookmarkIds: idsToMove, 
-    folderName: '_Review Duplicates' 
-  });
-  
-  if (response.status === 'success') {
-    addLog(`Successfully moved ${response.count} items.`, 'success');
-    // Refresh list locally
-    currentBookmarks = currentBookmarks.filter(b => !idsToMove.includes(b.id));
-    renderList(currentBookmarks);
-  } else {
-    addLog(`Move failed: ${response.message}`, 'error');
+  try {
+    addLog(`Moving ${idsToMove.length} items to _Review Duplicates...`, 'system');
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'MOVE_BOOKMARKS', 
+      bookmarkIds: idsToMove, 
+      folderName: '_Review Duplicates' 
+    });
+    
+    if (response && response.status === 'success') {
+      addLog(`Successfully moved ${response.count} items.`, 'success');
+      currentBookmarks = currentBookmarks.filter(b => !idsToMove.includes(b.id));
+      renderList(currentBookmarks);
+    } else if (response) {
+      addLog(`Move failed: ${response.message}`, 'error');
+    }
+  } catch (e) {
+    addLog(`Move error: ${e.message}`, 'error');
   }
 });
 
@@ -912,25 +960,32 @@ if (exportCsvBtn) exportCsvBtn.addEventListener('click', () => {
 // Link Checking Logic
 if (checkLinksBtn) checkLinksBtn.addEventListener('click', async () => {
   const limit = checkBatchLimit ? parseInt(checkBatchLimit.value) : 0;
-  addLog(`Starting link check (limit: ${limit || 'All'})...`, 'system');
   
-  setGlobalBusy(true, 'Checking...');
-  startQueuePolling();
-  
-  const response = await chrome.runtime.sendMessage({ 
-    action: 'CHECK_LINKS',
-    limit: limit
-  });
-  stopQueuePolling();
-  setGlobalBusy(false);
+  try {
+    addLog(`Starting link check (limit: ${limit || 'All'})...`, 'system');
+    setGlobalBusy(true, 'Checking...');
+    startQueuePolling();
+    
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'CHECK_LINKS',
+      limit: limit
+    });
+    
+    stopQueuePolling();
+    setGlobalBusy(false);
 
-  if (response.status === 'success') {
-    addLog('Finished checking links.', 'success');
-    currentBookmarks = response.bookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-  } else {
-    addLog(`Link check failed: ${response.message}`, 'error');
+    if (response && response.status === 'success') {
+      addLog('Finished checking links.', 'success');
+      currentBookmarks = response.bookmarks;
+      updateSummaryCounts(currentBookmarks);
+      renderList(currentBookmarks);
+    } else if (response) {
+      addLog(`Link check failed: ${response.message}`, 'error');
+    }
+  } catch (e) {
+    stopQueuePolling();
+    setGlobalBusy(false);
+    addLog(`Link check error: ${e.message}`, 'error');
   }
   
   checkLinksBtn.disabled = false;
@@ -945,14 +1000,18 @@ if (recheckBrokenBtn) {
     recheckBrokenBtn.textContent = 'Rechecking...';
   }
   
-  const response = await chrome.runtime.sendMessage({ action: 'RECHECK_BROKEN' });
-  if (response.status === 'success') {
-    addLog('Finished rechecking broken links.', 'success');
-    currentBookmarks = response.bookmarks;
-    updateSummaryCounts(currentBookmarks);
-    renderList(currentBookmarks);
-  } else {
-    addLog(`Recheck failed: ${response.message}`, 'error');
+  try {
+    const response = await chrome.runtime.sendMessage({ action: 'RECHECK_BROKEN' });
+    if (response && response.status === 'success') {
+      addLog('Finished rechecking broken links.', 'success');
+      currentBookmarks = response.bookmarks;
+      updateSummaryCounts(currentBookmarks);
+      renderList(currentBookmarks);
+    } else if (response) {
+      addLog(`Recheck failed: ${response.message}`, 'error');
+    }
+  } catch (e) {
+    addLog(`Recheck error: ${e.message}`, 'error');
   }
   
   if (recheckBrokenBtn) {
@@ -996,7 +1055,12 @@ async function runDiagnostics(baseUrl, apiKey) {
   if (response.status === 401) {
     addResult('Authentication', 'fail', 'Unauthorized (401). Your API Key is missing or incorrect.');
   } else if (response.ok || response.status === 200) {
-    addResult('Authentication', 'pass', 'API Key accepted successfully.');
+    try {
+      const data = await response.json();
+      addResult('Authentication', 'pass', `Connected to vault: "<strong>${data.vault || 'Unknown'}</strong>"`);
+    } catch (e) {
+      addResult('Authentication', 'pass', 'API Key accepted successfully (could not parse vault name).');
+    }
   } else {
     addResult('Authentication', 'fail', `Unexpected API response code: ${response.status}`);
   }

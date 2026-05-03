@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.8] - 2026-05-03
+### Fixed
+- **State Persistence**: Fixed a bug where the side panel could lose track of bookmark statuses when the background script restarted. This prevents the "everything is back to pending" issue.
+- **Race Condition Protection**: Added a hydration check to ensure the extension is fully ready before processing new link checks or captures.
+
+## [1.1.7] - 2026-05-03
+### Fixed
+- **Slash Normalization**: The extension now automatically converts backslashes (`\`) to forward slashes (`/`) in the destination path. This ensures that paths like `03-resources\attachment\bookmarks` work correctly in Obsidian.
+
+## [1.1.6] - 2026-05-03
+### Added
+- **Vault Verification**: The "Test Connection" button in settings now displays the actual name of the connected Obsidian vault.
+- **Detailed Path Logging**: The extension now logs exactly where each note is being created or updated in your vault, making it easier to find your web clips.
+### Fixed
+- **Sync Summary**: Fixed an issue where the bulk capture operation wouldn't report the number of notes created/updated in the log.
+
+## [1.1.5] - 2026-05-03
+### Fixed
+- **Communication Hardening (Final)**: Every asynchronous message call in the side panel is now wrapped in `try/catch` blocks. This eliminates "Uncaught (in promise) Error: A listener indicated an asynchronous response..." errors entirely.
+- **Fail-Safe UI**: If a background task fails or the connection is lost, the UI will now log a clear error message instead of crashing or freezing.
+
+## [1.1.4] - 2026-05-03
+### Added
+- **Auto-Folder Creation**: The extension now automatically creates the destination folder in Obsidian if it doesn't already exist.
+- **Detailed Sync Errors**: Capture failures now display the specific error message (e.g., "Folder not found") directly on the bookmark card for easier troubleshooting.
+
 ## [1.1.3] - 2026-05-03
 ### Fixed
 - **Message Channel Hardening**: Fixed the 'message channel closed' error by explicitly managing `return true` and `return false` in the service worker's message listener.
