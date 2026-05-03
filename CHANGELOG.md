@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.13] - 2026-05-03
+### Added
+- **Row-Level Capture**: Added a "Capture" button to each bookmark card in the Review tab. You can now push individual bookmarks to Obsidian without doing a bulk sync.
+### Fixed
+- **API Resilience**: Improved handling of edge cases in the Obsidian Local REST API where a note might be created but the connection is interrupted.
+
 ## [1.1.12] - 2026-05-03
 ### Fixed
 - **Content Persistence**: Enabled `unlimitedStorage` and disabled content-stripping to ensure extracted text is preserved across restarts. This fixes the "0 words" bug.

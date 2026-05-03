@@ -495,6 +495,7 @@ function renderList(bookmarks) {
           <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;">
             <button class="btn-row-recheck" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;">Recheck</button>
             <button class="btn-row-extract" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;" ${canExtract ? '' : 'disabled'}>Extract Content</button>
+            <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${hasExtraction ? '' : 'disabled'}>Capture</button>
             ${hasExtraction ? `<button class="btn-row-preview" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">View Preview</button>` : ''}
             <button class="btn-row-note-preview" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e8f0fe; border: 1px solid #1a73e8; border-radius: 4px; color: #1a73e8;">Preview Note</button>
           </div>
@@ -563,6 +564,39 @@ function renderList(bookmarks) {
         addLog(`Extraction error: ${err.message}`, 'error');
         e.target.disabled = false;
         e.target.textContent = 'Extract Content';
+      }
+    });
+  });
+
+  // Attach Capture Listeners
+  document.querySelectorAll('.btn-row-capture').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      const bookmark = currentBookmarks.find(b => b.id === id);
+      if (!bookmark) return;
+      
+      e.target.disabled = true;
+      e.target.textContent = 'Capturing...';
+      addLog(`Capturing ${bookmark.title} to Obsidian...`, 'system');
+      
+      try {
+        saveObsidianSettings();
+        const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [id] });
+        if (response && response.status === 'success') {
+          currentBookmarks = response.allBookmarks;
+          const res = currentBookmarks.find(b => b.id === id);
+          const status = res ? res.captureStatus : 'success';
+          addLog(`Successfully ${status} note for: ${bookmark.title}`, 'success');
+          renderList(currentBookmarks);
+        } else {
+          addLog(`Capture failed: ${response ? response.message : 'Unknown error'}`, 'error');
+          e.target.disabled = false;
+          e.target.textContent = 'Capture';
+        }
+      } catch (err) {
+        addLog(`Capture error: ${err.message}`, 'error');
+        e.target.disabled = false;
+        e.target.textContent = 'Capture';
       }
     });
   });
