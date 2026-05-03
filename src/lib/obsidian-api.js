@@ -43,7 +43,7 @@ export async function testConnection(baseUrl, apiKey) {
 }
 
 export async function noteExists(baseUrl, apiKey, path) {
-  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const safePath = path.split('/').filter(p => p).map(encodeURIComponent).join('/');
   const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     await obsidianFetch(url, apiKey, 'GET');
@@ -55,7 +55,7 @@ export async function noteExists(baseUrl, apiKey, path) {
 }
 
 export async function createFolder(baseUrl, apiKey, folderPath) {
-  const safePath = folderPath.split('/').map(encodeURIComponent).join('/');
+  const safePath = folderPath.split('/').filter(p => p).map(encodeURIComponent).join('/');
   const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}/`;
   try {
     await obsidianFetch(url, apiKey, 'POST');
@@ -64,19 +64,21 @@ export async function createFolder(baseUrl, apiKey, folderPath) {
     if (e.message.includes("409")) return true; // Already exists
     // If it's a 404, we might need to create parent folders recursively
     if (e.message.includes("404") && folderPath.includes('/')) {
-      const parts = folderPath.split('/');
-      const parentPath = parts.slice(0, -1).join('/');
-      await createFolder(baseUrl, apiKey, parentPath);
-      // Retry
-      await obsidianFetch(url, apiKey, 'POST');
-      return true;
+      const parts = folderPath.split('/').filter(p => p);
+      if (parts.length > 1) {
+        const parentPath = parts.slice(0, -1).join('/');
+        await createFolder(baseUrl, apiKey, parentPath);
+        // Retry
+        await obsidianFetch(url, apiKey, 'POST');
+        return true;
+      }
     }
     throw e;
   }
 }
 
 export async function createNote(baseUrl, apiKey, path, content) {
-  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const safePath = path.split('/').filter(p => p).map(encodeURIComponent).join('/');
   const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     const response = await obsidianFetch(url, apiKey, 'POST', content, 'text/markdown');
@@ -84,7 +86,7 @@ export async function createNote(baseUrl, apiKey, path, content) {
   } catch (e) {
     if (e.message.includes("404")) {
       // Extract folder path
-      const parts = path.split('/');
+      const parts = path.split('/').filter(p => p);
       if (parts.length > 1) {
         const folderPath = parts.slice(0, -1).join('/');
         await createFolder(baseUrl, apiKey, folderPath);
@@ -98,14 +100,14 @@ export async function createNote(baseUrl, apiKey, path, content) {
 }
 
 export async function updateNote(baseUrl, apiKey, path, content) {
-  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const safePath = path.split('/').filter(p => p).map(encodeURIComponent).join('/');
   const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     const response = await obsidianFetch(url, apiKey, 'PUT', content, 'text/markdown');
     return response.text();
   } catch (e) {
     if (e.message.includes("404")) {
-      const parts = path.split('/');
+      const parts = path.split('/').filter(p => p);
       if (parts.length > 1) {
         const folderPath = parts.slice(0, -1).join('/');
         await createFolder(baseUrl, apiKey, folderPath);

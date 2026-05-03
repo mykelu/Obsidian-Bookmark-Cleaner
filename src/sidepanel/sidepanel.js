@@ -153,11 +153,17 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
 });
 
 function saveObsidianSettings() {
+  let folder = obsFolderInput ? obsFolderInput.value.trim() : 'Bookmarks';
+  // Normalize Windows-style backslashes to forward slashes
+  folder = folder.replace(/\\/g, '/');
+  // Ensure it ends with a slash if not empty
+  if (folder && !folder.endsWith('/')) folder += '/';
+
   const settings = {
-    baseUrl: obsUrlInput ? obsUrlInput.value : 'https://127.0.0.1:27124',
-    apiKey: obsKeyInput ? obsKeyInput.value : '',
-    destinationFolder: obsFolderInput ? obsFolderInput.value : '03 Resources/Web Clips/Bookmarks/',
-    filenameTemplate: obsTemplateInput ? obsTemplateInput.value : '{title}.md'
+    baseUrl: obsUrlInput ? obsUrlInput.value.trim() : 'https://127.0.0.1:27124',
+    apiKey: obsKeyInput ? obsKeyInput.value.trim() : '',
+    destinationFolder: folder,
+    filenameTemplate: obsTemplateInput ? obsTemplateInput.value.trim() : '{title}.md'
   };
   chrome.storage.local.set({ obsidianSettings: settings });
   return settings;
@@ -1061,7 +1067,8 @@ async function runDiagnostics(baseUrl, apiKey) {
       if (vaultName) {
         addResult('Authentication', 'pass', `Connected to vault: "<strong>${vaultName}</strong>"`);
       } else if (data.service) {
-        addResult('Authentication', 'pass', `Connected to <strong>${data.service}</strong> (v${data.version})`);
+        const versionStr = data.version ? ` (v${data.version})` : '';
+        addResult('Authentication', 'pass', `Connected to <strong>${data.service}</strong>${versionStr}`);
       } else {
         addResult('Authentication', 'pass', 'Authenticated successfully.');
       }
