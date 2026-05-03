@@ -21,8 +21,9 @@ async function obsidianFetch(url, apiKey, method = 'GET', body = null, contentTy
   try {
     response = await fetch(url, options);
   } catch (error) {
+    console.error('[Obsidian API] Fetch error:', error);
     // A fetch failure on localhost HTTPS is almost always a TLS certificate trust issue or the server is offline.
-    throw new Error(`Connection failed. The Obsidian server might be offline, or Chrome is blocking the self-signed certificate. Please open ${new URL(url).origin} in a new tab and accept the security warning.`);
+    throw new Error(`Connection failed. The Obsidian server might be offline, or Chrome is blocking the self-signed certificate. Please open ${new URL(url).origin} in a new tab and accept the security warning. Underlying error: ${error.message}`);
   }
 
   if (!response.ok) {
