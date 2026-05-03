@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.15] - 2026-05-03
+### Changed
+- **Capture Reliability**: Individual "Capture" and "Create Sample Note" buttons now run in the UI context. This fixes the "Failed to fetch" error caused by Chrome blocking background connections to self-signed Obsidian certificates.
+
 ## [1.1.14] - 2026-05-03
 ### Fixed
 - **Sample Note Button**: Fixed the "Create Sample Note" button in settings which was failing silently. It now correctly disables during creation and provides log feedback.

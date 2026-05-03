@@ -1,7 +1,7 @@
 /**
  * Utility function to handle standard Obsidian Local REST API requests.
  */
-async function obsidianFetch(url, apiKey, method = 'GET', body = null, contentType = 'application/json') {
+export async function obsidianFetch(url, apiKey, method = 'GET', body = null, contentType = 'application/json') {
   if (!apiKey) throw new Error("Missing API Key. Please provide one in the settings.");
   
   const headers = {

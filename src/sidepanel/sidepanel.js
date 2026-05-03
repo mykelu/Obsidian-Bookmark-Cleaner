@@ -1,3 +1,6 @@
+import { buildMarkdownNote } from '../lib/note-builder.js';
+import { noteExists, createNote, updateNote } from '../lib/obsidian-api.js';
+
 // DOM Elements
 const tabBtns = document.querySelectorAll('.tab-btn');
 const tabPanes = document.querySelectorAll('.tab-pane');
@@ -577,26 +580,42 @@ function renderList(bookmarks) {
       
       e.target.disabled = true;
       e.target.textContent = 'Capturing...';
-      addLog(`Capturing ${bookmark.title} to Obsidian...`, 'system');
+      addLog(`Capturing ${bookmark.title} to Obsidian (UI context)...`, 'system');
       
       try {
-        saveObsidianSettings();
-        const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [id] });
-        if (response && response.status === 'success') {
-          currentBookmarks = response.allBookmarks;
-          const res = currentBookmarks.find(b => b.id === id);
-          const status = res ? res.captureStatus : 'success';
-          addLog(`Successfully ${status} note for: ${bookmark.title}`, 'success');
-          renderList(currentBookmarks);
+        const settings = saveObsidianSettings();
+        const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+        
+        let action;
+        const exists = await noteExists(settings.baseUrl, settings.apiKey, notePath);
+        if (exists) {
+          await updateNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+          action = 'updated';
         } else {
-          addLog(`Capture failed: ${response ? response.message : 'Unknown error'}`, 'error');
-          e.target.disabled = false;
-          e.target.textContent = 'Capture';
+          await createNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+          action = 'created';
         }
+
+        // Update local state
+        bookmark.captureStatus = action;
+        bookmark.capturedAt = capturedAt;
+        bookmark.capturedNotePath = notePath;
+        bookmark.capturedContentHash = contentHash;
+        bookmark.captureError = null;
+
+        addLog(`Successfully ${action} note for: ${bookmark.title}`, 'success');
+        
+        // Push state update to background storage
+        await chrome.runtime.sendMessage({ action: 'SAVE_BOOKMARKS', bookmarks: currentBookmarks });
+        
+        renderList(currentBookmarks);
       } catch (err) {
-        addLog(`Capture error: ${err.message}`, 'error');
+        addLog(`Capture failed: ${err.message}`, 'error');
         e.target.disabled = false;
         e.target.textContent = 'Capture';
+        
+        // Log to background too for debugging
+        console.error('[SidePanel] Capture error:', err);
       }
     });
   });
@@ -1182,32 +1201,40 @@ if (obsSampleBtn) {
     addLog(`Creating sample note for: ${bookmark.title}...`, 'system');
     
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [bookmark.id] });
+      const settings = saveObsidianSettings();
+      const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+      
+      let action;
+      const exists = await noteExists(settings.baseUrl, settings.apiKey, notePath);
+      if (exists) {
+        await updateNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+        action = 'updated';
+      } else {
+        await createNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+        action = 'created';
+      }
+
+      // Update local state
+      bookmark.captureStatus = action;
+      bookmark.capturedAt = capturedAt;
+      bookmark.capturedNotePath = notePath;
+      bookmark.capturedContentHash = contentHash;
+      bookmark.captureError = null;
+
+      addLog(`Success! ${action === 'created' ? 'Created' : 'Updated'} note: ${notePath}`, 'success');
       
       obsSampleBtn.disabled = false;
       obsSampleBtn.textContent = 'Create Sample Note';
 
-      if (response && response.status === 'success') {
-        currentBookmarks = response.allBookmarks;
-        const res = currentBookmarks.find(b => b.id === bookmark.id);
-        
-        if (res && (res.captureStatus === 'created' || res.captureStatus === 'updated')) {
-          addLog(`Success! ${res.captureStatus === 'created' ? 'Created' : 'Updated'} note: ${res.capturedNotePath}`, 'success');
-        } else if (res && res.captureStatus === 'skipped') {
-          addLog(`Note already exists and is up to date.`, 'info');
-        } else if (res && res.captureStatus === 'failed') {
-          addLog(`Sample note failed: ${res.captureError || 'Unknown error'}`, 'error');
-        } else {
-          addLog('Sample note process finished.', 'info');
-        }
-        renderList(currentBookmarks);
-      } else {
-        addLog(`Sample note failed: ${response ? response.message : 'No response'}`, 'error');
-      }
+      // Push state update to background storage
+      await chrome.runtime.sendMessage({ action: 'SAVE_BOOKMARKS', bookmarks: currentBookmarks });
+      
+      renderList(currentBookmarks);
     } catch (error) {
       obsSampleBtn.disabled = false;
       obsSampleBtn.textContent = 'Create Sample Note';
-      addLog(`Note creation failed: ${error.message}`, 'error');
+      addLog(`Sample note creation failed: ${error.message}`, 'error');
+      console.error('[SidePanel] Sample note error:', error);
     }
   });
 }
