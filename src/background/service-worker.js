@@ -812,6 +812,6 @@ function processMessage(message, sender, sendResponse) {
   }
 
   return false;
-});
+}
 
 console.log('[Service Worker] Initialized');
