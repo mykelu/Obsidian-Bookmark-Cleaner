@@ -16,14 +16,8 @@ const STORAGE_KEYS = {
  * Keeps all metadata but removes extraction body text.
  */
 function lightenBookmark(b) {
-  const light = { ...b };
-  if (light.extractedData) {
-    // Keep metadata, drop the heavy body
-    const { markdown, plainText, ...meta } = light.extractedData;
-    light.extractedData = meta;
-    light._hadExtraction = true; // Flag so UI knows extraction existed
-  }
-  return light;
+  // Now that we have unlimitedStorage, we can keep the full content.
+  return { ...b };
 }
 
 // ── Bookmarks ────────────────────────────────────────────────────────

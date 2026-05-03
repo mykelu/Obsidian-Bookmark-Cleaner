@@ -465,7 +465,9 @@ function renderList(bookmarks) {
       if (b.error) detailsHtml += `<div><strong>Link Reason:</strong> ${b.error} (retries: ${b.attempts ? b.attempts - 1 : 0})</div>`;
       if (b.captureError) detailsHtml += `<div style="color: #c92a2a;"><strong>Capture Error:</strong> ${b.captureError}</div>`;
       if (b.extractedData) {
-        const wordCount = b.extractedData.plainText ? b.extractedData.plainText.split(/\s+/).length : 0;
+        // Compute word count from plainText, fallback to markdown if missing
+        const textToCount = b.extractedData.plainText || b.extractedData.markdown || "";
+        const wordCount = textToCount.trim() ? textToCount.split(/\s+/).length : 0;
         const eStatus = b.extractionStatus || 'success';
         const color = eStatus === 'success' ? '#0a7a3b' : (eStatus === 'partial' ? '#b07f00' : '#c92a2a');
         detailsHtml += `<div style="color: ${color}; font-weight: bold; margin-top: 2px;">Extracted: ${eStatus} (${wordCount} words)</div>`;

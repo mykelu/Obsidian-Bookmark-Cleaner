@@ -509,6 +509,7 @@ function processMessage(message, sender, sendResponse) {
             markDone(state.activeQueue, id);
           } catch (e) {
             bookmark.captureStatus = 'failed';
+            bookmark.captureError = e.toString();
             markFailed(state.activeQueue, id, e.toString());
           }
 

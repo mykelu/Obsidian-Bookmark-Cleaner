@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.12] - 2026-05-03
+### Fixed
+- **Content Persistence**: Enabled `unlimitedStorage` and disabled content-stripping to ensure extracted text is preserved across restarts. This fixes the "0 words" bug.
+- **Capture Diagnostics**: The UI now shows the exact error message if a capture to Obsidian fails.
+- **Word Count Fallback**: Improved word count calculation to work even if only Markdown content is available.
+
 ## [1.1.11] - 2026-05-03
 ### Fixed
 - **Path Normalization**: The extension now automatically converts `\` to `/` in destination paths, fixing capture failures on Windows-style inputs.
