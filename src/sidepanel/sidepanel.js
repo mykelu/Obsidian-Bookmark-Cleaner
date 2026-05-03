@@ -1163,44 +1163,53 @@ if (obsTestBtn) {
 
 if (obsSampleBtn) {
   obsSampleBtn.addEventListener('click', async () => {
-  if (!currentBookmarks.length) {
-    addLog("No bookmarks available. Run a bookmark scan first.", 'error');
-    return;
-  }
-  
-  // Pick the first checked bookmark, or just the first bookmark
-  const checkedBox = document.querySelector('.bookmark-select:checked');
-  const bookmark = checkedBox 
-    ? currentBookmarks.find(b => b.id === checkedBox.getAttribute('data-id'))
-    : currentBookmarks[0];
-
-  // Save settings so the service worker can read them
-  saveObsidianSettings();
-  
-  addLog(`Creating sample note for: ${bookmark.title}...`, 'system');
-  
-  try {
-    const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [bookmark.id] });
-    if (response.status === 'success') {
-      const result = response.results[0];
-      if (result.action === 'created') {
-        addLog(`Created sample note: ${result.notePath}`, 'success');
-      } else if (result.action === 'updated') {
-        addLog(`Updated existing note: ${result.notePath}`, 'success');
-      } else if (result.action === 'skipped') {
-        addLog(`Note unchanged, skipped: ${result.notePath}`, 'info');
-      } else {
-        addLog(`Sample note failed: ${result.reason}`, 'error');
-      }
-      currentBookmarks = response.allBookmarks;
-      renderList(currentBookmarks);
-    } else {
-      addLog(`Sample note failed: ${response.message}`, 'error');
+    if (!currentBookmarks.length) {
+      addLog("No bookmarks available. Run a bookmark scan first.", 'error');
+      return;
     }
-  } catch (error) {
-    addLog(`Note creation failed: ${error.message}`, 'error');
-  }
-});
+    
+    // Pick the first checked bookmark, or just the first bookmark
+    const checkedBox = document.querySelector('.bookmark-select:checked');
+    const bookmark = checkedBox 
+      ? currentBookmarks.find(b => b.id === checkedBox.getAttribute('data-id'))
+      : currentBookmarks[0];
+
+    // Save settings so the service worker can read them
+    saveObsidianSettings();
+    
+    obsSampleBtn.disabled = true;
+    obsSampleBtn.textContent = 'Creating...';
+    addLog(`Creating sample note for: ${bookmark.title}...`, 'system');
+    
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [bookmark.id] });
+      
+      obsSampleBtn.disabled = false;
+      obsSampleBtn.textContent = 'Create Sample Note';
+
+      if (response && response.status === 'success') {
+        currentBookmarks = response.allBookmarks;
+        const res = currentBookmarks.find(b => b.id === bookmark.id);
+        
+        if (res && (res.captureStatus === 'created' || res.captureStatus === 'updated')) {
+          addLog(`Success! ${res.captureStatus === 'created' ? 'Created' : 'Updated'} note: ${res.capturedNotePath}`, 'success');
+        } else if (res && res.captureStatus === 'skipped') {
+          addLog(`Note already exists and is up to date.`, 'info');
+        } else if (res && res.captureStatus === 'failed') {
+          addLog(`Sample note failed: ${res.captureError || 'Unknown error'}`, 'error');
+        } else {
+          addLog('Sample note process finished.', 'info');
+        }
+        renderList(currentBookmarks);
+      } else {
+        addLog(`Sample note failed: ${response ? response.message : 'No response'}`, 'error');
+      }
+    } catch (error) {
+      obsSampleBtn.disabled = false;
+      obsSampleBtn.textContent = 'Create Sample Note';
+      addLog(`Note creation failed: ${error.message}`, 'error');
+    }
+  });
 }
 
 // ── Phase 8: Queue Progress Polling ────────────────────────────────

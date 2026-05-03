@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.14] - 2026-05-03
+### Fixed
+- **Sample Note Button**: Fixed the "Create Sample Note" button in settings which was failing silently. It now correctly disables during creation and provides log feedback.
+
 ## [1.1.13] - 2026-05-03
 ### Added
 - **Row-Level Capture**: Added a "Capture" button to each bookmark card in the Review tab. You can now push individual bookmarks to Obsidian without doing a bulk sync.
