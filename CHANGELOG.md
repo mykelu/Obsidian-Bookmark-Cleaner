@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.9] - 2026-05-03
+### Fixed
+- **Double-Click Fix**: Actions (Extract, Delete, Capture) now work on the first click even if the service worker was idle.
+- **Obsidian Pathing**: Fixed a bug where nested folders (like `a/b/c`) were not correctly encoded or created, causing capture failures.
+- **Recursive Folders**: The extension now automatically creates missing parent directories in Obsidian.
+- **Improved Diagnostics**: Better feedback in the connection tester.
+
 ## [1.1.8] - 2026-05-03
 ### Fixed
 - **State Persistence**: Fixed a bug where the side panel could lose track of bookmark statuses when the background script restarted. This prevents the "everything is back to pending" issue.

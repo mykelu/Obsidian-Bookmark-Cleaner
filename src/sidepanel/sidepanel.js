@@ -1057,9 +1057,16 @@ async function runDiagnostics(baseUrl, apiKey) {
   } else if (response.ok || response.status === 200) {
     try {
       const data = await response.json();
-      addResult('Authentication', 'pass', `Connected to vault: "<strong>${data.vault || 'Unknown'}</strong>"`);
+      const vaultName = data.vault;
+      if (vaultName) {
+        addResult('Authentication', 'pass', `Connected to vault: "<strong>${vaultName}</strong>"`);
+      } else if (data.service) {
+        addResult('Authentication', 'pass', `Connected to <strong>${data.service}</strong> (v${data.version})`);
+      } else {
+        addResult('Authentication', 'pass', 'Authenticated successfully.');
+      }
     } catch (e) {
-      addResult('Authentication', 'pass', 'API Key accepted successfully (could not parse vault name).');
+      addResult('Authentication', 'pass', 'API Key accepted successfully.');
     }
   } else {
     addResult('Authentication', 'fail', `Unexpected API response code: ${response.status}`);

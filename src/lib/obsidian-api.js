@@ -43,7 +43,8 @@ export async function testConnection(baseUrl, apiKey) {
 }
 
 export async function noteExists(baseUrl, apiKey, path) {
-  const url = `${baseUrl.replace(/\/$/, '')}/vault/${encodeURIComponent(path)}`;
+  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     await obsidianFetch(url, apiKey, 'GET');
     return true; // Exists if we get a 200 OK
@@ -54,20 +55,29 @@ export async function noteExists(baseUrl, apiKey, path) {
 }
 
 export async function createFolder(baseUrl, apiKey, folderPath) {
-  // Local REST API creates folders if you POST to a path ending in /
-  const url = `${baseUrl.replace(/\/$/, '')}/vault/${encodeURIComponent(folderPath)}/`;
+  const safePath = folderPath.split('/').map(encodeURIComponent).join('/');
+  const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}/`;
   try {
     await obsidianFetch(url, apiKey, 'POST');
     return true;
   } catch (e) {
     if (e.message.includes("409")) return true; // Already exists
+    // If it's a 404, we might need to create parent folders recursively
+    if (e.message.includes("404") && folderPath.includes('/')) {
+      const parts = folderPath.split('/');
+      const parentPath = parts.slice(0, -1).join('/');
+      await createFolder(baseUrl, apiKey, parentPath);
+      // Retry
+      await obsidianFetch(url, apiKey, 'POST');
+      return true;
+    }
     throw e;
   }
 }
 
 export async function createNote(baseUrl, apiKey, path, content) {
-  // Try to create the note. If it fails with 404, the folder might be missing.
-  const url = `${baseUrl.replace(/\/$/, '')}/vault/${encodeURIComponent(path)}`;
+  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     const response = await obsidianFetch(url, apiKey, 'POST', content, 'text/markdown');
     return response.text();
@@ -88,7 +98,8 @@ export async function createNote(baseUrl, apiKey, path, content) {
 }
 
 export async function updateNote(baseUrl, apiKey, path, content) {
-  const url = `${baseUrl.replace(/\/$/, '')}/vault/${encodeURIComponent(path)}`;
+  const safePath = path.split('/').map(encodeURIComponent).join('/');
+  const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
   try {
     const response = await obsidianFetch(url, apiKey, 'PUT', content, 'text/markdown');
     return response.text();

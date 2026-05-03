@@ -66,8 +66,17 @@ async function hydrateState() {
   }
 }
 
+let hydrationPromise = null;
+async function ensureHydrated() {
+  if (state.isHydrated) return;
+  if (!hydrationPromise) {
+    hydrationPromise = hydrateState();
+  }
+  return hydrationPromise;
+}
+
 // Run hydration on module load
-hydrateState();
+ensureHydrated();
 
 // ── Alarms ───────────────────────────────────────────────────────────
 
@@ -129,36 +138,41 @@ chrome.sidePanel
 // ── Message Handling ─────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Ensure state is hydrated before processing any messages
-  if (!state.isHydrated && message.action !== 'HEALTH_CHECK') {
-    hydrateState().then(() => {
-      // Re-run the listener logic or just return error
-      sendResponse({ status: 'error', message: 'Service worker is still hydrating. Please try again in a moment.' });
-    });
-    return true;
-  }
-
-  // Skip messages targeted at the offscreen document
-
+  // 1. Handle HEALTH_CHECK immediately (don't wait for hydration)
   if (message.action === 'HEALTH_CHECK') {
     const pendingJobs = (state.activeQueue && state.activeQueue.items) ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
     sendResponse({
       ok: true,
-      status: 'ok', // for backward compatibility
+      status: 'ok',
+      isHydrated: state.isHydrated,
       workerVersion: manifest.version,
       timestamp: new Date().toISOString(),
       uptimeHint: WORKER_START_TIME,
       pendingJobs: Math.max(0, pendingJobs),
-      message: state.isBusy ? 'Processing queue...' : 'Idle',
+      message: state.isBusy ? 'Processing queue...' : (state.isHydrated ? 'Idle' : 'Hydrating...'),
       state: state.settings,
       hasBookmarks: state.bookmarks.length > 0,
-      bookmarks: state.bookmarks, // RETURN THE BOOKMARKS!
+      bookmarks: state.bookmarks,
       hasQueue: !!state.activeQueue && !isComplete(state.activeQueue),
       isBusy: state.isBusy,
       isScanning: state.isScanning
     });
     return false;
   }
+
+  // 2. All other messages wait for hydration to complete
+  ensureHydrated().then(() => {
+    processMessage(message, sender, sendResponse);
+  }).catch(err => {
+    console.error('[Service Worker] Message failed due to hydration error:', err);
+    sendResponse({ status: 'error', message: 'Initialization failed. Please reload the extension.' });
+  });
+
+  return true; // Keep channel open for async response
+});
+
+function processMessage(message, sender, sendResponse) {
+  console.log('[Service Worker] Processing message:', message.action);
 
   if (message.action === 'SCAN_BOOKMARKS') {
     state.isScanning = true;
