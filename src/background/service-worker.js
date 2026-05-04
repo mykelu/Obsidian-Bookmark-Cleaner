@@ -10,6 +10,7 @@ import { saveBookmarks, saveBookmarksNow, loadBookmarks, saveQueueState, loadQue
 import { createQueue, serializeQueueState, restoreQueueState, dequeue, markDone, markFailed, pause, resume, getProgress, isComplete } from '../lib/task-queue.js';
 import { isRecheckDue, shouldPromoteToDeleteCandidate, classifyAction } from '../lib/recheck-policy.js';
 import { isJunk } from '../lib/junk-filter.js';
+import { getAIStatus, summarizeContent, suggestTags } from '../lib/onboard-ai.js';
 
 // Basic state in memory
 const WORKER_START_TIME = new Date().toISOString();
@@ -25,6 +26,10 @@ const state = {
   scraperSettings: {
     method: 'standard',
     extractSiteContext: false
+  },
+  aiSettings: {
+    enableSummarization: false,
+    enableTagging: false
   },
   isScanning: false,
   isBusy: false, // Prevents concurrent batch operations
@@ -69,6 +74,12 @@ async function hydrateState() {
     if (scraperData.scraperSettings) {
       state.scraperSettings = scraperData.scraperSettings;
       console.log('[Service Worker] Hydrated scraper settings:', state.scraperSettings);
+    }
+
+    const aiData = await chrome.storage.local.get('aiSettings');
+    if (aiData.aiSettings) {
+      state.aiSettings = aiData.aiSettings;
+      console.log('[Service Worker] Hydrated AI settings:', state.aiSettings);
     }
   } catch (e) {
     console.error('[Service Worker] State hydration failed:', e);
@@ -206,6 +217,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 function processMessage(message, sender, sendResponse) {
   console.log('[Service Worker] Processing message:', message.action);
+
+  if (message.action === 'SAVE_AI_SETTINGS') {
+    state.aiSettings = message.settings;
+    chrome.storage.local.set({ aiSettings: message.settings });
+    sendResponse({ status: 'success' });
+    return true;
+  }
+
+  if (message.action === 'GET_AI_STATUS') {
+    (async () => {
+      const status = await getAIStatus();
+      sendResponse(status);
+    })();
+    return true;
+  }
 
   if (message.action === 'SCAN_BOOKMARKS') {
     state.isScanning = true;
@@ -541,6 +567,9 @@ function processMessage(message, sender, sendResponse) {
       const apiKey = settings.apiKey;
 
       try {
+        const aiSettings = result.aiSettings || state.aiSettings;
+        await processAIInsights(bookmark, aiSettings);
+
         let relatedNotes = [];
         if (settings.enableVaultAwareLinking) {
           const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
@@ -600,6 +629,9 @@ function processMessage(message, sender, sendResponse) {
           }
 
           try {
+            const aiSettings = result.aiSettings || state.aiSettings;
+            await processAIInsights(bookmark, aiSettings);
+
             let relatedNotes = [];
             if (settings.enableVaultAwareLinking) {
               const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
@@ -962,6 +994,34 @@ function processMessage(message, sender, sendResponse) {
   }
 
   return false;
+}
+
+/**
+ * Helper to generate AI summary and tags if enabled
+ */
+async function processAIInsights(bookmark, aiSettings) {
+  if (!aiSettings || (!aiSettings.enableSummarization && !aiSettings.enableTagging)) return;
+  if (!bookmark.extractedData || !bookmark.extractedData.markdown) return;
+
+  const content = bookmark.extractedData.markdown;
+
+  if (aiSettings.enableSummarization && !bookmark.aiSummary) {
+    try {
+      console.log(`[Service Worker] Generating AI summary for: ${bookmark.title}`);
+      bookmark.aiSummary = await summarizeContent(content);
+    } catch (e) {
+      console.warn(`[Service Worker] AI Summarization failed for ${bookmark.title}:`, e);
+    }
+  }
+
+  if (aiSettings.enableTagging && (!bookmark.aiTags || bookmark.aiTags.length === 0)) {
+    try {
+      console.log(`[Service Worker] Suggesting AI tags for: ${bookmark.title}`);
+      bookmark.aiTags = await suggestTags(content);
+    } catch (e) {
+      console.warn(`[Service Worker] AI Tagging failed for ${bookmark.title}:`, e);
+    }
+  }
 }
 
 console.log('[Service Worker] Initialized');

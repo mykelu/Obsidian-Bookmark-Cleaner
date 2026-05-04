@@ -94,6 +94,7 @@ export function buildFrontmatter(bookmark, settings = {}, frozenTimestamp) {
     `  - bookmarks`,
     `  - web`,
     `  - captured`,
+    ...(bookmark.aiTags || []).map(t => `  - ${yamlValue(t)}`),
     `para_area: Resources`,
     `review_needed: ${!ext.markdown || ext.extractionStatus !== 'success'}`,
     `is_attachment: ${!!bookmark.isFile}`,
@@ -118,8 +119,15 @@ export function buildNoteBody(bookmark, frozenTimestamp, relatedNotes = []) {
   const title = ext.title || bookmark.title || 'Untitled';
   const description = ext.metaDescription || '';
   const now = frozenTimestamp || new Date().toISOString();
+  const aiSummary = bookmark.aiSummary || null;
 
   let body = `\n# ${title}\n\n`;
+
+  // AI Summary (Gemini Nano)
+  if (aiSummary) {
+    body += `## AI Summary\n\n`;
+    body += `${aiSummary}\n\n`;
+  }
 
   // Summary
   body += `## Summary\n\n`;
@@ -217,7 +225,9 @@ export async function buildMarkdownNote(bookmark, settings = {}, relatedNotes = 
     ext.markdown || '',
     (ext.headings || []).map(h => h.text).join('|'),
     (ext.extractionWarnings || []).join('|'),
-    (relatedNotes || []).map(n => n.filename).join('|')
+    (relatedNotes || []).map(n => n.filename).join('|'),
+    bookmark.aiSummary || '',
+    (bookmark.aiTags || []).join('|')
   ].join('\n');
   const contentHash = await computeContentHash(semanticInput);
 

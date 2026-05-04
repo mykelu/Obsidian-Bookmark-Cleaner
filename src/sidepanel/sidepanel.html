@@ -302,6 +302,51 @@
           </div>
         </div>
 
+        <!-- Built-in AI (Beta) -->
+        <div class="settings-group">
+          <div class="settings-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Built-in AI (Beta)</h3>
+            <span id="ai-status-badge" class="badge" style="font-size: 10px; padding: 2px 8px; border-radius: 12px; background: #eee; color: #666;">Checking...</span>
+          </div>
+          <div class="settings-content">
+            <div style="background: #fdf2f2; border: 1px solid #fee2e2; border-radius: 6px; padding: 10px; margin-bottom: 12px; font-size: 11px; display: none;" id="ai-setup-warning">
+              <div style="font-weight: 700; color: #991b1b; margin-bottom: 4px;">⚠️ Action Required</div>
+              <p style="margin: 0; color: #b91c1c; line-height: 1.4;">
+                To use Onboard AI, you must enable these Chrome flags:<br>
+                1. <code>chrome://flags/#prompt-api-for-gemini-nano</code><br>
+                2. <code>chrome://flags/#optimization-guide-on-device-model</code> (Set to "Enabled BypassPerfRequirement")
+              </p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;">
+                <div>
+                  <span style="font-weight: 600;">Enable Auto-Summarization</span>
+                  <div style="font-size: 10px; color: var(--gray-mid); margin-top: 2px;">Generate a TL;DR for every note locally.</div>
+                </div>
+                <input type="checkbox" id="ai-enable-summarization">
+              </label>
+              <label style="display: flex; align-items: center; justify-content: space-between; font-size: 12px; cursor: pointer;">
+                <div>
+                  <span style="font-weight: 600;">Enable Auto-Tagging</span>
+                  <div style="font-size: 10px; color: var(--gray-mid); margin-top: 2px;">Suggest Obsidian tags and PARA categories.</div>
+                </div>
+                <input type="checkbox" id="ai-enable-tagging">
+              </label>
+            </div>
+            
+            <div id="ai-download-progress" style="display: none; margin-top: 12px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span>Downloading Gemini Nano model...</span>
+                <span id="ai-download-percent">0%</span>
+              </div>
+              <div style="background: #eee; height: 4px; border-radius: 2px; overflow: hidden;">
+                <div id="ai-download-bar" style="background: var(--primary-color); height: 100%; width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Obsidian Integration Section -->
         <div id="obsidian-settings-group" class="settings-group" style="display: none;">
           <div class="settings-header">

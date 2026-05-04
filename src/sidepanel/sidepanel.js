@@ -148,7 +148,14 @@ const scaffoldPreset = document.getElementById('scaffold-preset');
 const btnScaffoldVault = document.getElementById('btn-scaffold-vault');
 
 // We'll import exporter functions dynamically for the browser context
-import { generateJsonBlob, generateCsvBlob } from '../lib/exporter.js';
+// Onboard AI Elements
+const aiStatusBadge = document.getElementById('ai-status-badge');
+const aiSetupWarning = document.getElementById('ai-setup-warning');
+const aiEnableSummarization = document.getElementById('ai-enable-summarization');
+const aiEnableTagging = document.getElementById('ai-enable-tagging');
+const aiDownloadProgress = document.getElementById('ai-download-progress');
+const aiDownloadBar = document.getElementById('ai-download-bar');
+const aiDownloadPercent = document.getElementById('ai-download-percent');
 
 let currentBookmarks = []; // Keep a local reference for exports
 let selectedIds = new Set(); // Track selected bookmark IDs across renders
@@ -192,6 +199,15 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
   if (result.uiPrefs) {
     refreshUIByPrefs(result.uiPrefs);
   }
+
+  // Load AI Settings
+  chrome.storage.local.get('aiSettings', (result) => {
+    if (result.aiSettings) {
+      if (aiEnableSummarization) aiEnableSummarization.checked = !!result.aiSettings.enableSummarization;
+      if (aiEnableTagging) aiEnableTagging.checked = !!result.aiSettings.enableTagging;
+    }
+    updateAIStatus();
+  });
 });
 
 function saveObsidianSettings() {
@@ -290,6 +306,46 @@ if (toggleVaultAware) toggleVaultAware.addEventListener('change', () => {
   saveObsidianSettings();
   addLog(`Vault-Aware Linking ${toggleVaultAware.checked ? 'enabled' : 'disabled'}.`, 'system');
 });
+
+// ── Onboard AI Handlers ──────────────────────────────────────────
+
+async function updateAIStatus() {
+  chrome.runtime.sendMessage({ action: 'GET_AI_STATUS' }, (response) => {
+    if (!response || !aiStatusBadge) return;
+
+    if (response.available === 'ready') {
+      aiStatusBadge.textContent = 'Ready';
+      aiStatusBadge.style.background = '#dcfce7';
+      aiStatusBadge.style.color = '#166534';
+      if (aiSetupWarning) aiSetupWarning.style.display = 'none';
+      if (aiDownloadProgress) aiDownloadProgress.style.display = 'none';
+    } else if (response.available === 'downloadable') {
+      aiStatusBadge.textContent = 'Downloading...';
+      aiStatusBadge.style.background = '#fef9c3';
+      aiStatusBadge.style.color = '#854d0e';
+      if (aiSetupWarning) aiSetupWarning.style.display = 'none';
+      if (aiDownloadProgress) aiDownloadProgress.style.display = 'block';
+      // Poll until ready
+      setTimeout(updateAIStatus, 5000);
+    } else {
+      aiStatusBadge.textContent = 'Setup Required';
+      aiStatusBadge.style.background = '#fee2e2';
+      aiStatusBadge.style.color = '#991b1b';
+      if (aiSetupWarning) aiSetupWarning.style.display = 'block';
+    }
+  });
+}
+
+function saveAISettings() {
+  const settings = {
+    enableSummarization: aiEnableSummarization ? aiEnableSummarization.checked : false,
+    enableTagging: aiEnableTagging ? aiEnableTagging.checked : false
+  };
+  chrome.runtime.sendMessage({ action: 'SAVE_AI_SETTINGS', settings });
+}
+
+if (aiEnableSummarization) aiEnableSummarization.addEventListener('change', saveAISettings);
+if (aiEnableTagging) aiEnableTagging.addEventListener('change', saveAISettings);
 
 if (btnScaffoldVault) {
   btnScaffoldVault.addEventListener('click', async () => {
