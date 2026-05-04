@@ -518,3 +518,47 @@ button.btn-danger {
 .help-accordion .help-content p:first-child {
   margin-top: 16px;
 }
+
+/* Compact Footer */
+.compact-footer {
+  margin-top: auto;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  font-size: 10px;
+  color: var(--gray-mid);
+  background: #fff;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 34px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.compact-footer:hover, .compact-footer.expanded {
+  max-height: 140px;
+  background-color: var(--gray-light);
+  padding-bottom: 20px;
+}
+
+.footer-summary {
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.compact-footer:hover .footer-summary, .compact-footer.expanded .footer-summary {
+  color: var(--primary-color);
+}
+
+.footer-details {
+  opacity: 0;
+  margin-top: 10px;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.compact-footer:hover .footer-details, .compact-footer.expanded .footer-details {
+  opacity: 1;
+  pointer-events: auto;
+}

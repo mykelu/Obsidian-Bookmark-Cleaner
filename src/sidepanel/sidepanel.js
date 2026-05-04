@@ -1,4 +1,4 @@
-import { buildMarkdownNote } from '../lib/note-builder.js';
+import { buildMarkdownNote, generateAttachmentPath } from '../lib/note-builder.js';
 import { noteExists, createNote, updateNote, uploadFile } from '../lib/obsidian-api.js';
 
 // DOM Elements
@@ -146,6 +146,14 @@ let selectedIds = new Set(); // Track selected bookmark IDs across renders
 // Display version
 if (appVersionEl) appVersionEl.textContent = chrome.runtime.getManifest().version;
 if (helpAppVersionEl) helpAppVersionEl.textContent = chrome.runtime.getManifest().version;
+
+// Compact Footer Toggle
+const footer = document.getElementById('app-footer');
+if (footer) {
+  footer.addEventListener('click', () => {
+    footer.classList.toggle('expanded');
+  });
+}
 
 // Load Obsidian Settings
 chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
@@ -548,7 +556,7 @@ function renderList(bookmarks) {
           <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;">
             <button class="btn-row-recheck" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;">Recheck</button>
             <button class="btn-row-extract" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;" ${canExtract ? '' : 'disabled'}>Extract Content</button>
-            <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${hasExtraction && !b.isFile ? '' : 'disabled'}>Capture</button>
+            <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${(hasExtraction || b.isFile) ? '' : 'disabled'}>Capture</button>
             ${b.isFile ? `
               <button class="btn-row-push-file" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #fff9db; border: 1px solid #f08c00; border-radius: 4px; color: #f08c00;">Push Binary to Obsidian</button>
               <button class="btn-row-download" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">Download</button>
@@ -728,6 +736,15 @@ function attachRowListeners() {
         const settings = saveObsidianSettings();
         const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
         
+        // Handle binary upload if it's a file
+        if (bookmark.isFile) {
+          const attachmentPath = generateAttachmentPath(bookmark, settings);
+          const response = await fetch(bookmark.finalUrl || bookmark.url);
+          if (!response.ok) throw new Error(`Failed to download asset: ${response.statusText}`);
+          const blob = await response.blob();
+          await uploadFile(settings.baseUrl, settings.apiKey, attachmentPath, blob);
+        }
+
         let action;
         const exists = await noteExists(settings.baseUrl, settings.apiKey, notePath);
         if (exists) {
@@ -826,6 +843,15 @@ if (btnCaptureFromPreview) {
       const settings = saveObsidianSettings();
       const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
       
+      // Handle binary upload if it's a file
+      if (bookmark.isFile) {
+        const attachmentPath = generateAttachmentPath(bookmark, settings);
+        const response = await fetch(bookmark.finalUrl || bookmark.url);
+        if (!response.ok) throw new Error(`Failed to download asset: ${response.statusText}`);
+        const blob = await response.blob();
+        await uploadFile(settings.baseUrl, settings.apiKey, attachmentPath, blob);
+      }
+
       let action;
       const exists = await noteExists(settings.baseUrl, settings.apiKey, notePath);
       if (exists) {
@@ -952,8 +978,8 @@ if (checkboxSelectAll) {
 function updateBulkActionButtons() {
   const selectedBookmarks = Array.from(selectedIds).map(id => currentBookmarks.find(b => b.id === id)).filter(Boolean);
 
-  const canExtractCount = selectedBookmarks.filter(b => b.status === 'healthy' || b.status === 'redirected').length;
-  const canCaptureCount = selectedBookmarks.filter(b => !!b.extractedData).length; // Only if extracted
+  const canExtractCount = selectedBookmarks.filter(b => (b.status === 'healthy' || b.status === 'redirected') && !b.isFile).length;
+  const canCaptureCount = selectedBookmarks.filter(b => !!b.extractedData || b.isFile).length; // Only if extracted or is a file
 
   const canCheckCount = selectedBookmarks.length; // Can re-check anything selected
   const canDeleteCount = selectedBookmarks.length;

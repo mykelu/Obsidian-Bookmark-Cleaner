@@ -96,6 +96,8 @@ export function buildFrontmatter(bookmark, settings = {}, frozenTimestamp) {
     `  - captured`,
     `para_area: Resources`,
     `review_needed: ${!ext.markdown || ext.extractionStatus !== 'success'}`,
+    `is_attachment: ${!!bookmark.isFile}`,
+    `content_type: ${yamlValue(bookmark.contentType || 'text/html')}`,
     `hash_url: ${bookmark.hash || ''}`,
     `hash_content: ${HASH_PLACEHOLDER}`,
     '---',
@@ -140,7 +142,13 @@ export function buildNoteBody(bookmark, frozenTimestamp) {
 
   // Extracted content
   body += `## Extracted content\n\n`;
-  if (ext.markdown && ext.markdown.length > 0) {
+  if (bookmark.isFile) {
+    const attachmentName = generateAttachmentFilename(bookmark);
+    body += `> [!info] Binary File Detected\n`;
+    body += `> This bookmark points to a binary file (${bookmark.contentType || 'unknown type'}).\n\n`;
+    body += `![[${attachmentName}]]\n\n`;
+    body += `[Download Original](${bookmark.finalUrl || bookmark.url})\n\n`;
+  } else if (ext.markdown && ext.markdown.length > 0) {
     body += ext.markdown;
     body += '\n\n';
   } else {
@@ -252,4 +260,44 @@ export function generateNotePath(bookmark, settings = {}) {
   const filename = template.replace('{title}', safeTitle);
 
   return folder ? `${folder}/${filename}` : filename;
+}
+
+/**
+ * Generate a filename for the attachment (binary) file.
+ */
+export function generateAttachmentFilename(bookmark) {
+  const url = bookmark.finalUrl || bookmark.url;
+  let filename = url.split('/').pop().split('?')[0] || 'file.dat';
+  
+  // If filename is too generic, use the title slug
+  if (filename.length < 5 || filename.includes('index') || filename.includes('download')) {
+    const titleSlug = sanitizeFilename(bookmark.title).substring(0, 50);
+    const ext = url.split('.').pop().split('?')[0];
+    if (ext && ext.length < 5) {
+      filename = `${titleSlug}.${ext}`;
+    } else {
+      filename = titleSlug;
+    }
+  }
+
+  // Ensure it has the correct extension if we know the content type
+  if (bookmark.contentType === 'application/pdf' && !filename.toLowerCase().endsWith('.pdf')) {
+    filename += '.pdf';
+  }
+
+  return filename;
+}
+
+/**
+ * Generate a full vault path for the attachment.
+ */
+export function generateAttachmentPath(bookmark, settings = {}) {
+  const filename = generateAttachmentFilename(bookmark);
+  let folder = (settings.destinationFolder || 'Bookmarks')
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\/+/g, '/');
+
+  // We place attachments in an "Attachments" subfolder
+  return folder ? `${folder}/Attachments/${filename}` : `Attachments/${filename}`;
 }

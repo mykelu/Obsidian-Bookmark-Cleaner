@@ -5,11 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-05-04
+### Added
+- **Unified Asset Capture**: The "Capture" button now handles both the markdown note and the binary attachment in a single step for files (PDFs, images, etc.).
+- **Smart Attachment Pathing**: Attachments are automatically saved to a dedicated `Attachments/` subfolder within your bookmark destination.
+- **Improved Note Generation**: Asset notes now include embedded previews (e.g., `![[attachment.pdf]]`) and content-type metadata.
+
 ## [1.2.2] - 2026-05-04
 ### Added
-- **Binary File Handling**: The extension now recognizes non-HTML files (PDFs, Docs, Images) during extraction.
-- **Push Binary to Obsidian**: Directly upload PDFs and other binary files to your Obsidian vault as attachments.
-- **File Filter**: New "Files (PDFs/Docs)" filter in the Review tab to quickly manage your non-web-page bookmarks.
+- **Binary File Handling**: Initial recognition of non-HTML files during link checks.
+- **Push Binary to Obsidian**: Manual row-level action to push binaries.
 
 ## [1.2.1] - 2026-05-04
 ### Fixed

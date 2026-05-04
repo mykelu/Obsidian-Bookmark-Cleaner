@@ -4,8 +4,8 @@ import { markDuplicates } from '../lib/deduper.js';
 import { setupReviewFolders, moveBookmark } from '../lib/bookmark-actions.js';
 import { checkLinksInBatches, checkBookmark } from '../lib/link-checker.js';
 import { extractContentFromUrl, closeOffscreenDocument } from '../lib/extractor.js';
-import { buildMarkdownNote } from '../lib/note-builder.js';
-import { noteExists, createNote, updateNote } from '../lib/obsidian-api.js';
+import { buildMarkdownNote, generateAttachmentPath } from '../lib/note-builder.js';
+import { noteExists, createNote, updateNote, uploadFile } from '../lib/obsidian-api.js';
 import { saveBookmarks, saveBookmarksNow, loadBookmarks, saveQueueState, loadQueueState, clearQueueState, saveAlarmConfig, loadAlarmConfig } from '../lib/state-store.js';
 import { createQueue, serializeQueueState, restoreQueueState, dequeue, markDone, markFailed, pause, resume, getProgress, isComplete } from '../lib/task-queue.js';
 import { isRecheckDue, shouldPromoteToDeleteCandidate, classifyAction } from '../lib/recheck-policy.js';
@@ -425,9 +425,13 @@ function processMessage(message, sender, sendResponse) {
           const urlToExtract = bookmark.finalUrl || bookmark.url;
 
           try {
-            const data = await extractContentFromUrl(urlToExtract, state.scraperSettings);
-            bookmark.extractedData = data;
-            bookmark.extractionStatus = data.extractionStatus || 'success';
+            if (bookmark.isFile) {
+              bookmark.extractionStatus = 'file';
+            } else {
+              const data = await extractContentFromUrl(urlToExtract, state.scraperSettings);
+              bookmark.extractedData = data;
+              bookmark.extractionStatus = data.extractionStatus || 'success';
+            }
             markDone(state.activeQueue, id);
           } catch (e) {
             bookmark.extractionStatus = 'failed';
@@ -520,6 +524,15 @@ function processMessage(message, sender, sendResponse) {
             let action;
             const exists = await noteExists(baseUrl, apiKey, notePath);
 
+            // Handle binary upload if it's a file
+            if (bookmark.isFile) {
+              const attachmentPath = generateAttachmentPath(bookmark, settings);
+              const response = await fetch(bookmark.finalUrl || bookmark.url);
+              if (!response.ok) throw new Error(`Failed to download asset: ${response.statusText}`);
+              const blob = await response.blob();
+              await uploadFile(baseUrl, apiKey, attachmentPath, blob);
+            }
+
             if (exists) {
               if (bookmark.capturedContentHash === contentHash) {
                 action = 'skipped';
@@ -610,9 +623,13 @@ function processMessage(message, sender, sendResponse) {
               const bookmark = state.bookmarks.find(b => b.id === id);
               if (bookmark && (bookmark.status === 'healthy' || bookmark.status === 'redirected')) {
                 try {
-                  const data = await extractContentFromUrl(bookmark.finalUrl || bookmark.url, state.scraperSettings);
-                  bookmark.extractedData = data;
-                  bookmark.extractionStatus = data.extractionStatus || 'success';
+                  if (bookmark.isFile) {
+                    bookmark.extractionStatus = 'file';
+                  } else {
+                    const data = await extractContentFromUrl(bookmark.finalUrl || bookmark.url, state.scraperSettings);
+                    bookmark.extractedData = data;
+                    bookmark.extractionStatus = data.extractionStatus || 'success';
+                  }
                   markDone(state.activeQueue, id);
                 } catch (e) {
                   bookmark.extractionStatus = 'failed';
@@ -640,6 +657,16 @@ function processMessage(message, sender, sendResponse) {
               if (bookmark && apiKey) {
                 try {
                   const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+                  
+                  // Handle binary upload if it's a file
+                  if (bookmark.isFile) {
+                    const attachmentPath = generateAttachmentPath(bookmark, settings);
+                    const response = await fetch(bookmark.finalUrl || bookmark.url);
+                    if (!response.ok) throw new Error(`Failed to download asset: ${response.statusText}`);
+                    const blob = await response.blob();
+                    await uploadFile(baseUrl, apiKey, attachmentPath, blob);
+                  }
+
                   const exists = await noteExists(baseUrl, apiKey, notePath);
                   let action = '';
                   if (exists && bookmark.capturedContentHash === contentHash) {

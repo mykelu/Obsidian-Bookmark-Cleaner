@@ -14,6 +14,23 @@ export function detectRedirect(response, originalUrl) {
   return null;
 }
 
+export function isAssetType(contentType, url) {
+  const assets = [
+    'application/pdf',
+    'application/zip',
+    'application/octet-stream',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument',
+    'image/',
+    'video/',
+    'audio/'
+  ];
+  const isHeaderMatch = assets.some(type => contentType && contentType.toLowerCase().includes(type));
+  const isExtensionMatch = /\.(pdf|zip|docx|xlsx|pptx|png|jpg|jpeg|gif|mp4|mp3)$/i.test(url);
+  
+  return isHeaderMatch || isExtensionMatch;
+}
+
 export function classifyResponse(response, finalUrl, error, attempts) {
   if (error) {
     if (error.name === 'AbortError' || error.message.toLowerCase().includes('timeout')) {
@@ -29,6 +46,10 @@ export function classifyResponse(response, finalUrl, error, attempts) {
   }
 
   if (response.ok) {
+    const contentType = response.headers.get('Content-Type') || '';
+    if (isAssetType(contentType, finalUrl || '')) {
+      return { status: response.redirected ? 'redirected' : 'healthy', message: 'Asset Detected', isFile: true, contentType };
+    }
     return { status: response.redirected ? 'redirected' : 'healthy', message: 'OK' };
   }
 
@@ -101,13 +122,25 @@ export async function checkBookmark(bookmark) {
 
     const { response, error } = await fetchWithFallback(bookmark.url);
     const finalUrl = response ? detectRedirect(response, bookmark.url) : null;
-    const { status, message } = classifyResponse(response, finalUrl, error, bookmark.attempts);
+    const classification = classifyResponse(response, finalUrl, error, bookmark.attempts);
+    const { status, message, isFile, contentType } = classification;
 
     // Record metadata
     if (finalUrl) bookmark.finalUrl = finalUrl;
-    if (response) bookmark.httpStatus = response.status;
+    if (response) {
+      bookmark.httpStatus = response.status;
+      const length = response.headers.get('Content-Length');
+      if (length) bookmark.contentLength = parseInt(length, 10);
+    }
+    
     bookmark.status = status;
     bookmark.error = message;
+    
+    if (isFile) {
+      bookmark.isFile = true;
+      bookmark.contentType = contentType;
+      bookmark.extractionStatus = 'file';
+    }
 
     return bookmark;
   } finally {
