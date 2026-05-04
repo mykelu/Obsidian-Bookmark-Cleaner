@@ -149,8 +149,9 @@ export function buildNoteBody(bookmark, frozenTimestamp) {
     body += `![[${attachmentName}]]\n\n`;
     body += `[Download Original](${bookmark.finalUrl || bookmark.url})\n\n`;
   } else if (ext.markdown && ext.markdown.length > 0) {
+    body += `<details>\n<summary>Click to expand original content</summary>\n\n`;
     body += ext.markdown;
-    body += '\n\n';
+    body += `\n\n</details>\n\n`;
   } else {
     body += `> *No content was extracted. The page may require authentication, use heavy client-side rendering, or be unreachable.*\n\n`;
   }
