@@ -111,8 +111,9 @@ export function buildFrontmatter(bookmark, settings = {}, frozenTimestamp) {
  * Handles both full extractions and shell notes (no extraction).
  * @param {Object} bookmark
  * @param {string} frozenTimestamp - shared timestamp for consistency
+ * @param {Array} relatedNotes - discovered relevant notes in the vault
  */
-export function buildNoteBody(bookmark, frozenTimestamp) {
+export function buildNoteBody(bookmark, frozenTimestamp, relatedNotes = []) {
   const ext = bookmark.extractedData || {};
   const title = ext.title || bookmark.title || 'Untitled';
   const description = ext.metaDescription || '';
@@ -138,6 +139,16 @@ export function buildNoteBody(bookmark, frozenTimestamp) {
     body += '\n';
   } else {
     body += `- *No structured headings extracted from this page.*\n\n`;
+  }
+
+  // Related Notes (Vault-Aware)
+  if (relatedNotes && relatedNotes.length > 0) {
+    body += `## Related Notes\n\n`;
+    relatedNotes.forEach(note => {
+      const cleanTitle = note.filename.replace(/\.md$/, '');
+      body += `- [[${cleanTitle}]]\n`;
+    });
+    body += '\n';
   }
 
   // Extracted content
@@ -184,12 +195,12 @@ export function buildNoteBody(bookmark, frozenTimestamp) {
  * Uses a single frozen timestamp for full determinism.
  * Returns { noteContent, contentHash, notePath, capturedAt }.
  */
-export async function buildMarkdownNote(bookmark, settings = {}) {
+export async function buildMarkdownNote(bookmark, settings = {}, relatedNotes = []) {
   // Freeze the timestamp so frontmatter and body are perfectly consistent
   const frozenTimestamp = new Date().toISOString();
 
   const { yaml, capturedAt } = buildFrontmatter(bookmark, settings, frozenTimestamp);
-  const body = buildNoteBody(bookmark, frozenTimestamp);
+  const body = buildNoteBody(bookmark, frozenTimestamp, relatedNotes);
 
   // Compute the idempotency hash from SEMANTIC content only.
   // Excludes timestamps so that re-capturing unchanged bookmarks produces
@@ -206,6 +217,7 @@ export async function buildMarkdownNote(bookmark, settings = {}) {
     ext.markdown || '',
     (ext.headings || []).map(h => h.text).join('|'),
     (ext.extractionWarnings || []).join('|'),
+    (relatedNotes || []).map(n => n.filename).join('|')
   ].join('\n');
   const contentHash = await computeContentHash(semanticInput);
 

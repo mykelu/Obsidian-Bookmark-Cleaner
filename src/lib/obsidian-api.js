@@ -158,3 +158,61 @@ export async function uploadFile(baseUrl, apiKey, path, blob) {
     throw e;
   }
 }
+
+/**
+ * Searches the vault for notes matching a query.
+ * Uses the Local REST API search endpoint.
+ */
+export async function searchNotes(baseUrl, apiKey, query) {
+  const url = `${baseUrl.replace(/\/$/, '')}/search/`;
+  try {
+    // The Local REST API supports complex queries or simple text search via POST /search/
+    // We'll use a simple query format first.
+    const response = await obsidianFetch(url, apiKey, 'POST', {
+      query: `file:(*.md) content:(${query})`,
+      contextLength: 0
+    });
+    return response.json();
+  } catch (e) {
+    console.warn('[Obsidian API] Search failed:', e);
+    return [];
+  }
+}
+
+/**
+ * Scaffolds a standard folder structure in the vault.
+ * Default preset: 'Second Brain' (PARA + GTD)
+ */
+export async function scaffoldVault(baseUrl, apiKey, preset = 'PARA') {
+  const folders = {
+    'PARA': [
+      '00-Inbox',
+      '10-Projects',
+      '20-Areas',
+      '30-Resources',
+      '40-Archives',
+      '50-System/Templates',
+      '50-System/Assets'
+    ],
+    'SIMPLE': [
+      'Inbox',
+      'Library',
+      'Archive',
+      'Assets'
+    ]
+  };
+
+  const targets = folders[preset] || folders['PARA'];
+  const results = [];
+
+  for (const folder of targets) {
+    try {
+      await createFolder(baseUrl, apiKey, folder);
+      results.push({ folder, status: 'created' });
+    } catch (e) {
+      results.push({ folder, status: 'error', message: e.message });
+    }
+  }
+
+  return results;
+}

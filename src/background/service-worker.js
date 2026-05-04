@@ -507,6 +507,27 @@ function processMessage(message, sender, sendResponse) {
     return true;
   }
 
+  if (message.action === 'SCAFFOLD_VAULT') {
+    chrome.storage.local.get(['obsidianSettings'], async (result) => {
+      const settings = result.obsidianSettings || state.settings;
+      const baseUrl = settings.baseUrl || settings.obsidianBaseUrl;
+      const apiKey = settings.apiKey;
+      
+      if (!baseUrl || !apiKey) {
+        sendResponse({ status: 'error', message: 'Obsidian settings missing.' });
+        return;
+      }
+
+      try {
+        const results = await scaffoldVault(baseUrl, apiKey, message.preset);
+        sendResponse({ status: 'success', results });
+      } catch (e) {
+        sendResponse({ status: 'error', message: e.toString() });
+      }
+    });
+    return true;
+  }
+
   if (message.action === 'PREVIEW_NOTE') {
     const bookmark = state.bookmarks.find(b => b.id === message.id);
     if (!bookmark) {
@@ -516,9 +537,21 @@ function processMessage(message, sender, sendResponse) {
 
     chrome.storage.local.get(['obsidianSettings'], async (result) => {
       const settings = result.obsidianSettings || state.settings;
+      const baseUrl = settings.baseUrl || settings.obsidianBaseUrl;
+      const apiKey = settings.apiKey;
+
       try {
-        const { noteContent, notePath, contentHash } = await buildMarkdownNote(bookmark, settings);
-        const exists = await noteExists(settings.baseUrl || settings.obsidianBaseUrl, settings.apiKey, notePath);
+        let relatedNotes = [];
+        if (settings.enableVaultAwareLinking) {
+          const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
+          if (query) {
+            relatedNotes = await searchNotes(baseUrl, apiKey, query);
+            relatedNotes = (relatedNotes || []).slice(0, 3);
+          }
+        }
+
+        const { noteContent, notePath, contentHash } = await buildMarkdownNote(bookmark, settings, relatedNotes);
+        const exists = await noteExists(baseUrl, apiKey, notePath);
         sendResponse({
           status: 'success',
           noteContent,
@@ -567,7 +600,16 @@ function processMessage(message, sender, sendResponse) {
           }
 
           try {
-            const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+            let relatedNotes = [];
+            if (settings.enableVaultAwareLinking) {
+              const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
+              if (query) {
+                relatedNotes = await searchNotes(baseUrl, apiKey, query);
+                relatedNotes = (relatedNotes || []).slice(0, 3);
+              }
+            }
+
+            const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings, relatedNotes);
             let action;
             const exists = await noteExists(baseUrl, apiKey, notePath);
 

@@ -142,6 +142,11 @@ const diagResultsContainer = document.getElementById('diagnostic-results');
 const diagList = document.getElementById('diagnostic-list');
 const diagSummary = document.getElementById('diagnostic-summary');
 
+// Vault Intelligence
+const toggleVaultAware = document.getElementById('toggle-vault-aware');
+const scaffoldPreset = document.getElementById('scaffold-preset');
+const btnScaffoldVault = document.getElementById('btn-scaffold-vault');
+
 // We'll import exporter functions dynamically for the browser context
 import { generateJsonBlob, generateCsvBlob } from '../lib/exporter.js';
 
@@ -167,6 +172,7 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
     if (obsKeyInput) obsKeyInput.value = result.obsidianSettings.apiKey || '';
     if (obsFolderInput) obsFolderInput.value = result.obsidianSettings.destinationFolder || '03 Resources/Web Clips/Bookmarks/';
     if (obsTemplateInput) obsTemplateInput.value = result.obsidianSettings.filenameTemplate || '{title}.md';
+    if (toggleVaultAware) toggleVaultAware.checked = !!result.obsidianSettings.enableVaultAwareLinking;
   }
   
   if (result.scraperSettings) {
@@ -199,7 +205,8 @@ function saveObsidianSettings() {
     baseUrl: obsUrlInput ? obsUrlInput.value.trim() : 'https://127.0.0.1:27124',
     apiKey: obsKeyInput ? obsKeyInput.value.trim() : '',
     destinationFolder: folder,
-    filenameTemplate: obsTemplateInput ? obsTemplateInput.value.trim() : '{title}.md'
+    filenameTemplate: obsTemplateInput ? obsTemplateInput.value.trim() : '{title}.md',
+    enableVaultAwareLinking: toggleVaultAware ? toggleVaultAware.checked : false
   };
   chrome.storage.local.set({ obsidianSettings: settings });
   return settings;
@@ -278,6 +285,35 @@ if (toggleAutoSwitch) toggleAutoSwitch.addEventListener('change', (e) => {
   saveScraperSettings();
 });
 if (autoSwitchThreshold) autoSwitchThreshold.addEventListener('input', saveScraperSettings);
+
+if (toggleVaultAware) toggleVaultAware.addEventListener('change', () => {
+  saveObsidianSettings();
+  addLog(`Vault-Aware Linking ${toggleVaultAware.checked ? 'enabled' : 'disabled'}.`, 'system');
+});
+
+if (btnScaffoldVault) {
+  btnScaffoldVault.addEventListener('click', async () => {
+    const preset = scaffoldPreset.value;
+    btnScaffoldVault.disabled = true;
+    btnScaffoldVault.textContent = 'Building...';
+    addLog(`Scaffolding vault with ${preset} structure...`, 'system');
+    
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'SCAFFOLD_VAULT', preset });
+      if (response && response.status === 'success') {
+        const folders = response.results.map(r => r.path).join(', ');
+        addLog(`Vault scaffolded successfully: ${folders}`, 'success');
+      } else if (response) {
+        addLog(`Scaffolding failed: ${response.message}`, 'error');
+      }
+    } catch (e) {
+      addLog(`Scaffolding error: ${e.message}`, 'error');
+    } finally {
+      btnScaffoldVault.disabled = false;
+      btnScaffoldVault.textContent = 'Build Structure';
+    }
+  });
+}
 
 // ── UI Preference Logic ─────────────────────────────────────────────
 
@@ -823,7 +859,21 @@ function attachRowListeners() {
       
       try {
         const settings = saveObsidianSettings();
-        const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+        
+        let relatedNotes = [];
+        if (settings.enableVaultAwareLinking) {
+          const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
+          if (query) {
+            try {
+              relatedNotes = await searchNotes(settings.baseUrl, settings.apiKey, query);
+              relatedNotes = (relatedNotes || []).slice(0, 3);
+            } catch (e) {
+              console.warn('[SidePanel] Related notes search failed:', e);
+            }
+          }
+        }
+
+        const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings, relatedNotes);
         
         // Handle binary upload if it's a file
         if (bookmark.isFile) {
@@ -930,7 +980,21 @@ if (btnCaptureFromPreview) {
     
     try {
       const settings = saveObsidianSettings();
-      const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+      
+      let relatedNotes = [];
+      if (settings.enableVaultAwareLinking) {
+        const query = (bookmark.title || '').split(' ').filter(w => w.length > 3).slice(0, 3).join(' ');
+        if (query) {
+          try {
+            relatedNotes = await searchNotes(settings.baseUrl, settings.apiKey, query);
+            relatedNotes = (relatedNotes || []).slice(0, 3);
+          } catch (e) {
+            console.warn('[SidePanel] Related notes search failed:', e);
+          }
+        }
+      }
+
+      const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings, relatedNotes);
       
       // Handle binary upload if it's a file
       if (bookmark.isFile) {
