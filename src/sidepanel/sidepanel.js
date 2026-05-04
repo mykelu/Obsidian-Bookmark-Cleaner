@@ -529,8 +529,10 @@ function renderList(bookmarks) {
     msg.textContent = `...and ${filtered.length - 100} more not shown to preserve UI performance.`;
     bookmarkListContainer.appendChild(msg);
   }
-  
-  }
+
+  // Finalize interactive elements
+  attachRowListeners();
+}
 
 function populateFolderFilter(bookmarks) {
   if (!filterFolder) return;
@@ -552,7 +554,8 @@ function populateFolderFilter(bookmarks) {
   }
 }
 
-// Attach Recheck Listeners
+function attachRowListeners() {
+  // Attach Recheck Listeners
   document.querySelectorAll('.btn-row-recheck').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = e.target.getAttribute('data-id');
