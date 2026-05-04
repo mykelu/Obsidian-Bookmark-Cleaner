@@ -59,6 +59,28 @@ async function handleExtraction(url) {
   }
   
   const finalFetchedUrl = response.redirected ? response.url : url;
+  const contentType = response.headers.get('Content-Type') || '';
+  
+  // Detect binary files / PDFs
+  const isPdf = contentType.includes('application/pdf') || finalFetchedUrl.toLowerCase().endsWith('.pdf');
+  const isBinary = contentType.includes('application/octet-stream') || 
+                   contentType.includes('application/zip') || 
+                   contentType.includes('application/msword') ||
+                   contentType.includes('application/vnd.openxmlformats-officedocument');
+
+  if (isPdf || isBinary) {
+    const filename = finalFetchedUrl.split('/').pop() || 'Downloaded File';
+    return {
+      title: filename,
+      extractionStatus: 'file',
+      isFile: true,
+      isPdf: isPdf,
+      contentType: contentType,
+      markdown: `## Binary File Detected\n\n**Source**: [${filename}](${finalFetchedUrl})\n**Type**: ${contentType}\n\n> [!NOTE]\n> Standard extraction does not support binary files. You can download this file directly or use Jina Reader for PDF-to-Markdown conversion.`,
+      plainText: `Binary file detected: ${finalFetchedUrl} (${contentType})`,
+      extractionWarnings: [`Detected binary file type: ${contentType}`]
+    };
+  }
   
   const html = await response.text();
   const parser = new DOMParser();

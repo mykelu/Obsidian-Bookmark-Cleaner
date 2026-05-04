@@ -14,7 +14,11 @@ export async function obsidianFetch(url, apiKey, method = 'GET', body = null, co
   
   const options = { method, headers };
   if (body) {
-    options.body = typeof body === 'string' ? body : JSON.stringify(body);
+    if (typeof body === 'string' || body instanceof Blob || body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
+      options.body = body;
+    } else {
+      options.body = JSON.stringify(body);
+    }
   }
 
   let response;
@@ -131,4 +135,26 @@ export async function patchNote(baseUrl, apiKey, path, target, content) {
     'Target': target
   };
   throw new Error("Patch note is stubbed and not fully implemented yet.");
+}
+
+export async function uploadFile(baseUrl, apiKey, path, blob) {
+  const safePath = path.split('/').filter(p => p).map(encodeURIComponent).join('/');
+  const url = `${baseUrl.replace(/\/$/, '')}/vault/${safePath}`;
+  const contentType = blob.type || 'application/octet-stream';
+  
+  try {
+    const response = await obsidianFetch(url, apiKey, 'PUT', blob, contentType);
+    return response.text();
+  } catch (e) {
+    if (e.message.includes("404")) {
+      const parts = path.split('/').filter(p => p);
+      if (parts.length > 1) {
+        const folderPath = parts.slice(0, -1).join('/');
+        await createFolder(baseUrl, apiKey, folderPath);
+        const response = await obsidianFetch(url, apiKey, 'PUT', blob, contentType);
+        return response.text();
+      }
+    }
+    throw e;
+  }
 }

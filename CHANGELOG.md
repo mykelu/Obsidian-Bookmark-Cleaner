@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-05-04
+### Added
+- **Binary File Handling**: The extension now recognizes non-HTML files (PDFs, Docs, Images) during extraction.
+- **Push Binary to Obsidian**: Directly upload PDFs and other binary files to your Obsidian vault as attachments.
+- **File Filter**: New "Files (PDFs/Docs)" filter in the Review tab to quickly manage your non-web-page bookmarks.
+
 ## [1.2.1] - 2026-05-04
 ### Fixed
 - **CSP Violations**: Fixed an issue where scraping certain websites would trigger Content Security Policy errors in the background. Added HTML sanitization to strip script and link tags before parsing.

@@ -1,5 +1,5 @@
 import { buildMarkdownNote } from '../lib/note-builder.js';
-import { noteExists, createNote, updateNote } from '../lib/obsidian-api.js';
+import { noteExists, createNote, updateNote, uploadFile } from '../lib/obsidian-api.js';
 
 // DOM Elements
 const tabBtns = document.querySelectorAll('.tab-btn');
@@ -451,6 +451,8 @@ function renderList(bookmarks) {
     if (selectedFilter === 'delete-candidate') {
       const days = b.firstChecked ? (Date.now() - new Date(b.firstChecked).getTime()) / (24*60*60*1000) : 0;
       statusMatch = (b.status === 'hard-broken' && (b.attempts || 0) >= 3 && days >= 21);
+    } else if (selectedFilter === 'file') {
+      statusMatch = (b.extractionStatus === 'file' || b.isFile === true);
     } else if (selectedFilter === 'extracted') {
       statusMatch = (b.extractionStatus === 'success');
     } else if (selectedFilter === 'captured') {
@@ -546,7 +548,11 @@ function renderList(bookmarks) {
           <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;">
             <button class="btn-row-recheck" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;">Recheck</button>
             <button class="btn-row-extract" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;" ${canExtract ? '' : 'disabled'}>Extract Content</button>
-            <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${hasExtraction ? '' : 'disabled'}>Capture</button>
+            <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${hasExtraction && !b.isFile ? '' : 'disabled'}>Capture</button>
+            ${b.isFile ? `
+              <button class="btn-row-push-file" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #fff9db; border: 1px solid #f08c00; border-radius: 4px; color: #f08c00;">Push Binary to Obsidian</button>
+              <button class="btn-row-download" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">Download</button>
+            ` : ''}
             ${hasExtraction ? `<button class="btn-row-preview" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">View Preview</button>` : ''}
             <button class="btn-row-note-preview" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e8f0fe; border: 1px solid #1a73e8; border-radius: 4px; color: #1a73e8;">Preview Note</button>
           </div>
@@ -599,7 +605,65 @@ function populateFolderFilter(bookmarks) {
   }
 }
 
+async function pushFileToObsidian(id, btn) {
+  const bookmark = currentBookmarks.find(b => b.id === id);
+  if (!bookmark) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Pushing...';
+  
+  try {
+    const settings = saveObsidianSettings();
+    const url = bookmark.finalUrl || bookmark.url;
+    let filename = url.split('/').pop().split('?')[0] || 'file.dat';
+    // Ensure filename isn't too long or weird
+    if (filename.length > 100) filename = filename.substring(0, 95) + '...';
+    
+    const path = `${settings.destinationFolder}${filename}`;
+
+    addLog(`Downloading binary: ${filename}...`, 'system');
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+    const blob = await response.blob();
+
+    addLog(`Pushing ${filename} to Obsidian...`, 'system');
+    await uploadFile(settings.baseUrl, settings.apiKey, path, blob);
+    addLog(`Successfully pushed ${filename} to Obsidian.`, 'success');
+
+    bookmark.captureStatus = 'created';
+    bookmark.capturedAt = new Date().toISOString();
+    bookmark.capturedNotePath = path;
+
+    await chrome.runtime.sendMessage({ action: 'SAVE_BOOKMARKS', bookmarks: currentBookmarks });
+    renderList(currentBookmarks);
+  } catch (err) {
+    addLog(`Push failed: ${err.message}`, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Push Binary to Obsidian';
+  }
+}
+
 function attachRowListeners() {
+  // Attach Download Listeners (Local)
+  document.querySelectorAll('.btn-row-download').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-id');
+      const b = currentBookmarks.find(bk => bk.id === id);
+      if (b) {
+        addLog(`Opening download for: ${b.title}`, 'system');
+        window.open(b.finalUrl || b.url, '_blank');
+      }
+    });
+  });
+
+  // Attach Push File Listeners
+  document.querySelectorAll('.btn-row-push-file').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.getAttribute('data-id');
+      pushFileToObsidian(id, e.target);
+    });
+  });
+
   // Attach Recheck Listeners
   document.querySelectorAll('.btn-row-recheck').forEach(btn => {
     btn.addEventListener('click', async (e) => {
