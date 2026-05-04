@@ -194,17 +194,25 @@
         </div>
         <div id="search-results-info" style="font-size: 11px; color: var(--gray-mid); margin: -8px 0 12px 12px; font-weight: 500;"></div>
 
-        <div id="status-filters" class="filters" style="display: none; flex-wrap: wrap;">
-          <label for="filter-status" style="font-size: 12px; font-weight: 600;">Status:</label>
-          <select id="filter-status" style="flex: 1; min-width: 120px;">
-            <option value="all">All Items</option>
-            <option value="healthy">Healthy</option>
-            <option value="redirected">Redirected</option>
-            <option value="soft-broken">Soft Broken</option>
-            <option value="hard-broken">Hard Broken</option>
-            <option value="duplicate">Duplicate</option>
-            <option value="delete-candidate">Delete Candidate (v0.8 policy)</option>
-          </select>
+        <div id="status-filters" class="filters" style="display: none; flex-wrap: wrap; gap: 8px;">
+          <div style="flex: 1; min-width: 120px; display: flex; align-items: center; gap: 6px;">
+            <label for="filter-status" style="font-size: 11px; font-weight: 600; white-space: nowrap;">Status:</label>
+            <select id="filter-status" style="width: 100%; font-size: 11px; padding: 4px;">
+              <option value="all">All Statuses</option>
+              <option value="healthy">Healthy</option>
+              <option value="redirected">Redirected</option>
+              <option value="soft-broken">Soft Broken</option>
+              <option value="hard-broken">Hard Broken</option>
+              <option value="duplicate">Duplicate</option>
+              <option value="delete-candidate">Delete Candidate</option>
+            </select>
+          </div>
+          <div style="flex: 2; min-width: 180px; display: flex; align-items: center; gap: 6px;">
+            <label for="filter-folder" style="font-size: 11px; font-weight: 600; white-space: nowrap;">Folder:</label>
+            <select id="filter-folder" style="width: 100%; font-size: 11px; padding: 4px;">
+              <option value="all">All Folders</option>
+            </select>
+          </div>
         </div>
 
         <!-- Safe Staging (Chrome Folders) -->

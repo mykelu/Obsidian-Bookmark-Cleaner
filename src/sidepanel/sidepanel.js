@@ -21,6 +21,7 @@ const moveDupesBtn = document.getElementById('btn-move-dupes');
 const checkLinksBtn = document.getElementById('btn-check-links');
 const recheckBrokenBtn = document.getElementById('btn-recheck-broken');
 const filterStatus = document.getElementById('filter-status');
+const filterFolder = document.getElementById('filter-folder');
 const statusFiltersContainer = document.getElementById('status-filters');
 const extractSelectedBtn = document.getElementById('btn-extract-selected');
 const captureSelectedBtn = document.getElementById('btn-capture-selected');
@@ -397,6 +398,9 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
       if (recheckBrokenBtn) recheckBrokenBtn.disabled = false;
       if (viewDeleteCandidatesBtn) viewDeleteCandidatesBtn.disabled = false;
       
+      // Populate folder filter
+      populateFolderFilter(currentBookmarks);
+      
       // Bulk extract/capture are handled by updateBulkActionButtons based on selection
     } else {
       addLog(`Scan failed: ${response.message}`, 'error');
@@ -413,6 +417,7 @@ function renderList(bookmarks) {
   bookmarkListContainer.innerHTML = '';
   
   const selectedFilter = filterStatus.value;
+  const selectedFolder = filterFolder.value;
   const searchTerm = inputSearch.value.toLowerCase();
   
   let filtered = bookmarks.filter(b => {
@@ -430,12 +435,15 @@ function renderList(bookmarks) {
                         b.title.toLowerCase().includes(searchTerm) || 
                         b.url.toLowerCase().includes(searchTerm);
 
-    return statusMatch && searchMatch;
+    // Folder Filter
+    const folderMatch = (selectedFolder === 'all' || b.folderPath === selectedFolder);
+
+    return statusMatch && searchMatch && folderMatch;
   });
   
   // Update result count info
   if (searchResultsInfo) {
-    if (searchTerm || selectedFilter !== 'all') {
+    if (searchTerm || selectedFilter !== 'all' || selectedFolder !== 'all') {
       searchResultsInfo.textContent = `Showing ${Math.min(filtered.length, 100)} of ${filtered.length} matches`;
       searchResultsInfo.style.display = 'block';
     } else {
@@ -522,7 +530,29 @@ function renderList(bookmarks) {
     bookmarkListContainer.appendChild(msg);
   }
   
-  // Attach Recheck Listeners
+  }
+
+function populateFolderFilter(bookmarks) {
+  if (!filterFolder) return;
+  
+  const currentVal = filterFolder.value;
+  const folders = [...new Set(bookmarks.map(b => b.folderPath))].sort();
+  
+  filterFolder.innerHTML = '<option value="all">All Folders</option>';
+  folders.forEach(folder => {
+    const option = document.createElement('option');
+    option.value = folder;
+    option.textContent = folder;
+    filterFolder.appendChild(option);
+  });
+  
+  // Restore value if it still exists
+  if (folders.includes(currentVal)) {
+    filterFolder.value = currentVal;
+  }
+}
+
+// Attach Recheck Listeners
   document.querySelectorAll('.btn-row-recheck').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const id = e.target.getAttribute('data-id');
@@ -931,13 +961,9 @@ function updateSummaryCounts(bookmarks) {
 }
 
 // Filter status dropdown triggers a re-render
-if (filterStatus) filterStatus.addEventListener('change', () => {
-  renderList(currentBookmarks);
-});
-
-if (inputSearch) inputSearch.addEventListener('input', () => {
-  renderList(currentBookmarks);
-});
+if (filterStatus) filterStatus.addEventListener('change', () => renderList(currentBookmarks));
+if (filterFolder) filterFolder.addEventListener('change', () => renderList(currentBookmarks));
+if (inputSearch) inputSearch.addEventListener('input', () => renderList(currentBookmarks));
 
 if (btnGoToScan) btnGoToScan.addEventListener('click', () => {
   switchTab('scan');
@@ -1541,6 +1567,7 @@ async function loadFolderList() {
         if (bulkActions) bulkActions.style.display = 'flex';
         if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
         updateSummaryCounts(currentBookmarks);
+        populateFolderFilter(currentBookmarks);
         renderList(currentBookmarks);
         addLog('Restored bookmarks from previous session.', 'system');
       }
