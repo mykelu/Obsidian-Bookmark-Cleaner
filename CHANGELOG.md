@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.19] - 2026-05-04
+### Added
+- **Persistent Selection**: Bookmark selections now stay checked after bulk extraction, so you can immediately "Capture to Obsidian" without re-selecting everything.
+- **Workflow Filters**: Added new status filters: "Extracted", "Captured to Obsidian", and "Extracted but Not Captured" to help track your progress.
+- **Improved Bulk Actions**: Refactored selection logic to be more robust across different views and filters.
+
 ## [1.1.18] - 2026-05-04
 ### Fixed
 - **Syntax Error**: Fixed a critical `Unexpected token '}'` error in `sidepanel.js`.

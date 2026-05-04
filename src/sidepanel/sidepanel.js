@@ -138,6 +138,7 @@ const diagSummary = document.getElementById('diagnostic-summary');
 import { generateJsonBlob, generateCsvBlob } from '../lib/exporter.js';
 
 let currentBookmarks = []; // Keep a local reference for exports
+let selectedIds = new Set(); // Track selected bookmark IDs across renders
 
 // Display version
 if (appVersionEl) appVersionEl.textContent = chrome.runtime.getManifest().version;
@@ -384,6 +385,7 @@ if (scanBtn) scanBtn.addEventListener('click', async () => {
       }
       
       currentBookmarks = response.bookmarks;
+      selectedIds.clear(); // Reset on new scan
       if (statusFiltersContainer) statusFiltersContainer.style.display = 'block';
       if (bulkActions) bulkActions.style.display = 'flex';
       if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
@@ -426,6 +428,12 @@ function renderList(bookmarks) {
     if (selectedFilter === 'delete-candidate') {
       const days = b.firstChecked ? (Date.now() - new Date(b.firstChecked).getTime()) / (24*60*60*1000) : 0;
       statusMatch = (b.status === 'hard-broken' && (b.attempts || 0) >= 3 && days >= 21);
+    } else if (selectedFilter === 'extracted') {
+      statusMatch = (b.extractionStatus === 'success');
+    } else if (selectedFilter === 'captured') {
+      statusMatch = !!(b.captureStatus && (b.captureStatus === 'created' || b.captureStatus === 'updated'));
+    } else if (selectedFilter === 'uncaptured') {
+      statusMatch = (b.extractionStatus === 'success' && !b.captureStatus);
     } else if (selectedFilter !== 'all') {
       statusMatch = (b.status === selectedFilter);
     }
@@ -462,6 +470,13 @@ function renderList(bookmarks) {
     }
   }
   
+  // Handle "Duplicate" auto-selection
+  if (selectedFilter === 'duplicate') {
+    bookmarks.forEach(b => {
+      if (b.status === 'duplicate') selectedIds.add(b.id);
+    });
+  }
+
   const toRender = filtered.slice(0, 100);
   toRender.forEach(b => {
     const div = document.createElement('div');
@@ -490,9 +505,11 @@ function renderList(bookmarks) {
     const hasExtraction = !!b.extractedData;
     const captureColor = { created: '#0a7a3b', updated: '#1a73e8', skipped: '#888', failed: '#c92a2a' };
 
+    const isSelected = selectedIds.has(b.id) || (selectedFilter === 'duplicate' && b.status === 'duplicate');
+
     div.innerHTML = `
       <div style="display:flex; align-items:flex-start;">
-        <input type="checkbox" class="bookmark-select" data-id="${b.id}" style="margin-right:8px;" ${b.status === 'duplicate' ? 'checked' : ''}>
+        <input type="checkbox" class="bookmark-select" data-id="${b.id}" style="margin-right:8px;" ${isSelected ? 'checked' : ''}>
         <div style="flex:1; overflow:hidden;">
           <div class="bookmark-item-title">${b.title}</div>
           <div class="bookmark-item-url">${b.url}</div>
@@ -518,7 +535,12 @@ function renderList(bookmarks) {
 
   // Attach Checkbox Listeners for Bulk Actions
   document.querySelectorAll('.bookmark-select').forEach(cb => {
-    cb.addEventListener('change', updateBulkActionButtons);
+    cb.addEventListener('change', (e) => {
+      const id = e.target.getAttribute('data-id');
+      if (e.target.checked) selectedIds.add(id);
+      else selectedIds.delete(id);
+      updateBulkActionButtons();
+    });
   });
   
   if (filtered.length > 100) {
@@ -828,19 +850,24 @@ if (captureSelectedBtn) {
 // Select All checkbox logic
 if (checkboxSelectAll) {
   checkboxSelectAll.addEventListener('change', () => {
+    const isChecked = checkboxSelectAll.checked;
     const checkboxes = document.querySelectorAll('.bookmark-select');
-    checkboxes.forEach(cb => { cb.checked = checkboxSelectAll.checked; });
+    checkboxes.forEach(cb => {
+      cb.checked = isChecked;
+      const id = cb.getAttribute('data-id');
+      if (isChecked) selectedIds.add(id);
+      else selectedIds.delete(id);
+    });
     updateBulkActionButtons();
   });
 }
 
 function updateBulkActionButtons() {
-  const selected = document.querySelectorAll('.bookmark-select:checked');
-  const selectedIds = Array.from(selected).map(cb => cb.getAttribute('data-id'));
-  const selectedBookmarks = selectedIds.map(id => currentBookmarks.find(b => b.id === id)).filter(Boolean);
+  const selectedBookmarks = Array.from(selectedIds).map(id => currentBookmarks.find(b => b.id === id)).filter(Boolean);
 
   const canExtractCount = selectedBookmarks.filter(b => b.status === 'healthy' || b.status === 'redirected').length;
-  const canCaptureCount = selectedBookmarks.filter(b => b.status === 'healthy' || b.status === 'redirected').length;
+  const canCaptureCount = selectedBookmarks.filter(b => !!b.extractedData).length; // Only if extracted
+
   const canCheckCount = selectedBookmarks.length; // Can re-check anything selected
   const canDeleteCount = selectedBookmarks.length;
 
@@ -1465,6 +1492,10 @@ if (btnConfirmDelete) {
         addLog(`Backup saved to console (${r.backup.length} items). Open DevTools > Console to copy if needed.`, 'info');
       }
 
+      // Prune selectedIds
+      const deletedIds = (r.results || []).filter(x => x.action === 'deleted').map(x => x.id);
+      deletedIds.forEach(id => selectedIds.delete(id));
+
       if (r.allBookmarks) {
         currentBookmarks = r.allBookmarks;
       } else {
@@ -1571,6 +1602,7 @@ async function loadFolderList() {
         if (reviewCleanupActions) reviewCleanupActions.style.display = 'block';
         updateSummaryCounts(currentBookmarks);
         populateFolderFilter(currentBookmarks);
+        selectedIds.clear(); // Reset on hydration
         renderList(currentBookmarks);
         addLog('Restored bookmarks from previous session.', 'system');
       }
