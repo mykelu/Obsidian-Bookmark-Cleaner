@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+### [1.3.1] - 2026-05-04
+#### Added
+- **Automated Junk Filter**: Integrated `isJunk` detection to automatically flag generic tool homepages (Notion, Slack, etc.) and parked domains during extraction.
+- **Junk Status Filter**: New UI filter in the Review tab to isolate and manage flagged noise.
+
+## [1.3.0] - 2026-05-04
+### Added
+- **Firecrawl Integration**: Added Firecrawl as a premium scraping engine for deep parsing of complex pages.
+- **Intelligent Auto-Switching**: Automatically fall back to Jina or Firecrawl if Standard extraction yields poor results (word count below threshold).
+- **Manual Retry Buttons**: Per-bookmark override buttons to retry extraction with specific engines (Jina/Firecrawl).
+- **Scraper Configuration**: Dedicated panel for API keys and auto-switch word-count thresholds.
+
 ## [1.2.3] - 2026-05-04
 ### Added
 - **Unified Asset Capture**: The "Capture" button now handles both the markdown note and the binary attachment in a single step for files (PDFs, images, etc.).

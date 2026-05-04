@@ -1,3 +1,5 @@
+import { isToolHomepage } from './junk-filter.js';
+
 /**
  * Pure function to normalize a URL.
  * Removes trailing slashes, standardizes protocols, drops fragments.
@@ -36,6 +38,9 @@ export async function flattenBookmarks(nodes, folderPath = []) {
   const processPromises = nodes.map(async (node) => {
     // If node has a URL, it's a bookmark
     if (node.url) {
+      if (isToolHomepage(node.url)) {
+        return [];
+      }
       const normalized = normalizeUrl(node.url);
       const hash = await hashUrl(normalized);
       return [{

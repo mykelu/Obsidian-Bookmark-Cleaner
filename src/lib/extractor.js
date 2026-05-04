@@ -1,3 +1,5 @@
+import { isDomainForSale } from './junk-filter.js';
+
 const OFFSCREEN_DOCUMENT_PATH = 'src/offscreen/offscreen.html';
 
 let creating; // Promise to track creation
@@ -38,13 +40,84 @@ export async function setupOffscreenDocument() {
  * Sends a message to the offscreen document to fetch and parse the URL.
  */
 export async function extractContentFromUrl(url, scraperSettings = { method: 'standard', extractSiteContext: false }) {
-  if (scraperSettings.method === 'jina') {
-    return extractWithJina(url, scraperSettings.extractSiteContext);
+  let data = null;
+  let currentMethod = scraperSettings.method;
+
+  try {
+    // Initial Attempt
+    data = await runExtractionAttempt(url, currentMethod, scraperSettings);
+  } catch (e) {
+    console.warn(`[Extractor] ${currentMethod} extraction failed for ${url}:`, e);
+    // If auto-switch is OFF, we bubble up the error
+    if (!scraperSettings.autoSwitch) throw e;
   }
 
+  // Auto-Switch Logic: If result is poor or failed, try fallbacks
+  if (scraperSettings.autoSwitch) {
+    const wordCount = (data && data.plainText) ? data.plainText.trim().split(/\s+/).length : 0;
+    const threshold = scraperSettings.autoSwitchThreshold || 200;
+    const isPoor = !data || data.extractionStatus === 'partial' || wordCount < threshold;
+
+    if (isPoor && !data?.isFile) {
+      console.log(`[Extractor] Auto-switching for ${url} (Current: ${currentMethod}, Words: ${wordCount})`);
+      
+      // Fallback 1: Jina (if we haven't tried it yet)
+      if (currentMethod === 'standard') {
+        try {
+          const fallbackData = await extractWithJina(url, scraperSettings.extractSiteContext);
+          fallbackData.extractionWarnings.push(`Auto-switched from Standard (Standard yielded ${wordCount} words)`);
+          data = fallbackData;
+          currentMethod = 'jina';
+        } catch (err) {
+          console.error('[Extractor] Jina fallback failed:', err);
+        }
+      }
+
+      // Fallback 2: Firecrawl (if key exists and we aren't already there)
+      const stillPoor = !data || data.extractionStatus === 'partial' || (data.plainText?.trim().split(/\s+/).length || 0) < threshold;
+      if (stillPoor && currentMethod !== 'firecrawl' && scraperSettings.firecrawlApiKey) {
+        try {
+          const fallbackData = await extractWithFirecrawl(url, scraperSettings.firecrawlApiKey, scraperSettings.extractSiteContext);
+          fallbackData.extractionWarnings.push(`Auto-switched to Firecrawl fallback`);
+          data = fallbackData;
+        } catch (err) {
+          console.error('[Extractor] Firecrawl fallback failed:', err);
+        }
+      }
+    }
+  }
+
+  if (scraperSettings.extractSiteContext && data && !data.siteContext) {
+    data.siteContext = await fetchSiteContext(url);
+  }
+
+  if (!data) throw new Error('Extraction failed: No data returned from any engine.');
+
+  if (isDomainForSale(data.plainText)) {
+    console.warn(`[Extractor] Junk content detected for ${url}: Domain for sale`);
+    data.extractionStatus = 'junk';
+    data.extractionWarnings.push('Identified as a "Domain for Sale" page');
+  }
+
+  return data;
+}
+
+async function runExtractionAttempt(url, method, settings) {
+  switch (method) {
+    case 'jina':
+      return extractWithJina(url, settings.extractSiteContext);
+    case 'firecrawl':
+      return extractWithFirecrawl(url, settings.firecrawlApiKey, settings.extractSiteContext);
+    case 'standard':
+    default:
+      return extractWithStandard(url);
+  }
+}
+
+async function extractWithStandard(url) {
   await setupOffscreenDocument();
   
-  const data = await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({
       target: 'offscreen',
       action: 'EXTRACT_CONTENT',
@@ -61,12 +134,6 @@ export async function extractContentFromUrl(url, scraperSettings = { method: 'st
       }
     });
   });
-
-  if (scraperSettings.extractSiteContext && data) {
-    data.siteContext = await fetchSiteContext(url);
-  }
-
-  return data;
 }
 
 async function extractWithJina(url, extractContext = false) {
@@ -87,6 +154,44 @@ async function extractWithJina(url, extractContext = false) {
     plainText: markdown.replace(/[#*`\[\]]/g, '').substring(0, 10000),
     extractionStatus: 'success',
     extractionWarnings: ['Extracted via Jina Reader proxy']
+  };
+
+  if (extractContext) {
+    data.siteContext = await fetchSiteContext(url);
+  }
+
+  return data;
+}
+
+async function extractWithFirecrawl(url, apiKey, extractContext = false) {
+  if (!apiKey) throw new Error('Firecrawl API key missing');
+  
+  const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      url: url,
+      formats: ['markdown']
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(`Firecrawl Error: ${response.status} - ${err.error || 'Unknown'}`);
+  }
+
+  const result = await response.json();
+  if (!result.success) throw new Error(`Firecrawl failed: ${result.error || 'Unknown'}`);
+
+  const data = {
+    title: result.data.metadata?.title || url,
+    markdown: result.data.markdown || '',
+    plainText: (result.data.markdown || '').replace(/[#*`\[\]]/g, '').substring(0, 10000),
+    extractionStatus: 'success',
+    extractionWarnings: ['Extracted via Firecrawl Premium']
   };
 
   if (extractContext) {

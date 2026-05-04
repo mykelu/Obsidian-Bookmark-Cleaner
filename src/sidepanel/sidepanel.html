@@ -204,6 +204,7 @@
               <option value="soft-broken">Soft Broken</option>
               <option value="hard-broken">Hard Broken</option>
               <option value="duplicate">Duplicate</option>
+              <option value="junk">Junk (Noise)</option>
               <option value="delete-candidate">Delete Candidate</option>
               <option value="file">📁 Files (PDFs/Docs)</option>
               <option value="extracted">✅ Extracted</option>
@@ -372,12 +373,38 @@
               <select id="scraper-method" style="width: 100%; font-size: 12px; padding: 6px;">
                 <option value="standard" selected>Standard (Local, Fast)</option>
                 <option value="jina" title="Uses r.jina.ai proxy for high-quality Markdown and JS support">Jina Reader (High Quality, External)</option>
+                <option value="firecrawl" title="Uses Firecrawl for deep scraping of complex pages">Firecrawl (Premium, External)</option>
               </select>
-              <div style="font-size: 10px; color: #666; margin-top: 4px;">Standard is private & local. Jina is better for JavaScript sites but sends URLs to jina.ai.</div>
+              <div style="font-size: 10px; color: #666; margin-top: 4px;">Standard is private & local. Jina and Firecrawl handle JavaScript-heavy sites by sending URLs to external services.</div>
             </div>
-            <div class="form-group" style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+
+            <div id="firecrawl-config" style="display: none; border: 1px solid #ffe3e3; background: #fff5f5; padding: 10px; border-radius: 6px; margin-bottom: 12px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="firecrawl-api-key" style="font-size: 11px; font-weight: 600;">Firecrawl API Key</label>
+                <input type="password" id="firecrawl-api-key" placeholder="fc-..." style="font-size: 11px; padding: 4px;">
+                <p style="font-size: 9px; color: #d93025; margin-top: 4px; margin-bottom: 0;">Required for Firecrawl engine. Get one at firecrawl.dev</p>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
               <input type="checkbox" id="toggle-site-context">
               <label for="toggle-site-context" style="margin-bottom: 0;">Extract Site Context (Meta Tags)</label>
+            </div>
+
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 12px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="toggle-auto-switch">
+                <label for="toggle-auto-switch" style="font-size: 13px; font-weight: 500; margin-bottom: 0;">Auto-Switch (Smart Extraction)</label>
+              </div>
+              <p style="font-size: 10px; color: var(--gray-mid); margin: 4px 0 8px 22px;">Automatically try Jina/Firecrawl if Standard results are poor.</p>
+              
+              <div id="auto-switch-config" style="display: none; margin-left: 22px; background: var(--gray-light); padding: 8px; border-radius: 4px; border: 1px solid #eee;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                  <label for="auto-switch-threshold" style="white-space: nowrap;">Word Count Threshold:</label>
+                  <input type="number" id="auto-switch-threshold" value="200" min="0" step="50" style="width: 60px; padding: 2px 4px;">
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 4px;">Triggers fallback if Standard extraction yields fewer words.</div>
+              </div>
             </div>
           </div>
         </div>

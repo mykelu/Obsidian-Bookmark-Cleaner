@@ -9,6 +9,7 @@ import { noteExists, createNote, updateNote, uploadFile } from '../lib/obsidian-
 import { saveBookmarks, saveBookmarksNow, loadBookmarks, saveQueueState, loadQueueState, clearQueueState, saveAlarmConfig, loadAlarmConfig } from '../lib/state-store.js';
 import { createQueue, serializeQueueState, restoreQueueState, dequeue, markDone, markFailed, pause, resume, getProgress, isComplete } from '../lib/task-queue.js';
 import { isRecheckDue, shouldPromoteToDeleteCandidate, classifyAction } from '../lib/recheck-policy.js';
+import { isJunk } from '../lib/junk-filter.js';
 
 // Basic state in memory
 const WORKER_START_TIME = new Date().toISOString();
@@ -430,7 +431,14 @@ function processMessage(message, sender, sendResponse) {
             } else {
               const data = await extractContentFromUrl(urlToExtract, state.scraperSettings);
               bookmark.extractedData = data;
-              bookmark.extractionStatus = data.extractionStatus || 'success';
+              
+              // Check for Junk
+              if (isJunk(bookmark.url, data.plainText)) {
+                bookmark.extractionStatus = 'junk';
+                bookmark.extractedData.extractionWarnings.push('Flagged as Junk/Generic Homepage');
+              } else {
+                bookmark.extractionStatus = data.extractionStatus || 'success';
+              }
             }
             markDone(state.activeQueue, id);
           } catch (e) {
@@ -455,6 +463,45 @@ function processMessage(message, sender, sendResponse) {
         sendResponse({ status: 'error', message: err.toString() });
       } finally {
         state.isBusy = false;
+      }
+    })();
+    return true;
+  }
+
+  if (message.action === 'EXTRACT_SINGLE') {
+    const bookmark = state.bookmarks.find(b => b.id === message.id);
+    if (!bookmark) {
+      sendResponse({ status: 'error', message: 'Bookmark not found' });
+      return true;
+    }
+
+    const settings = message.scraperSettings || state.scraperSettings;
+    const urlToExtract = bookmark.finalUrl || bookmark.url;
+
+    (async () => {
+      try {
+        bookmark.extractionStatus = 'pending';
+        const data = await extractContentFromUrl(urlToExtract, settings);
+        bookmark.extractedData = data;
+        
+        // Check for Junk
+        if (isJunk(bookmark.url, data.plainText)) {
+          bookmark.extractionStatus = 'junk';
+          bookmark.extractedData.extractionWarnings.push('Flagged as Junk/Generic Homepage');
+        } else {
+          bookmark.extractionStatus = data.extractionStatus || 'success';
+        }
+
+        if (data.isFile) bookmark.isFile = true;
+        
+        await saveBookmarksNow(state.bookmarks);
+        sendResponse({ status: 'success', bookmark: bookmark });
+      } catch (e) {
+        bookmark.extractionStatus = 'failed';
+        bookmark.extractedData = { extractionWarnings: [e.toString()] };
+        sendResponse({ status: 'error', message: e.toString() });
+      } finally {
+        await closeOffscreenDocument();
       }
     })();
     return true;

@@ -132,6 +132,11 @@ const btnHealthCheckSimple = document.getElementById('btn-health-check-simple');
 
 const scraperMethod = document.getElementById('scraper-method');
 const toggleSiteContext = document.getElementById('toggle-site-context');
+const firecrawlApiKey = document.getElementById('firecrawl-api-key');
+const firecrawlConfig = document.getElementById('firecrawl-config');
+const toggleAutoSwitch = document.getElementById('toggle-auto-switch');
+const autoSwitchConfig = document.getElementById('auto-switch-config');
+const autoSwitchThreshold = document.getElementById('auto-switch-threshold');
 
 const diagResultsContainer = document.getElementById('diagnostic-results');
 const diagList = document.getElementById('diagnostic-list');
@@ -165,8 +170,17 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
   }
   
   if (result.scraperSettings) {
-    if (scraperMethod) scraperMethod.value = result.scraperSettings.method || 'standard';
+    if (scraperMethod) {
+      scraperMethod.value = result.scraperSettings.method || 'standard';
+      updateScraperPanelVisibility(scraperMethod.value);
+    }
     if (toggleSiteContext) toggleSiteContext.checked = !!result.scraperSettings.extractSiteContext;
+    if (firecrawlApiKey) firecrawlApiKey.value = result.scraperSettings.firecrawlApiKey || '';
+    if (toggleAutoSwitch) {
+      toggleAutoSwitch.checked = !!result.scraperSettings.autoSwitch;
+      if (autoSwitchConfig) autoSwitchConfig.style.display = toggleAutoSwitch.checked ? 'block' : 'none';
+    }
+    if (autoSwitchThreshold) autoSwitchThreshold.value = result.scraperSettings.autoSwitchThreshold || 200;
   }
   
   if (result.uiPrefs) {
@@ -236,15 +250,34 @@ if (btnSaveObsidian) btnSaveObsidian.addEventListener('click', () => {
 async function saveScraperSettings() {
   const settings = {
     method: scraperMethod ? scraperMethod.value : 'standard',
-    extractSiteContext: toggleSiteContext ? toggleSiteContext.checked : false
+    extractSiteContext: toggleSiteContext ? toggleSiteContext.checked : false,
+    firecrawlApiKey: firecrawlApiKey ? firecrawlApiKey.value.trim() : '',
+    autoSwitch: toggleAutoSwitch ? toggleAutoSwitch.checked : false,
+    autoSwitchThreshold: autoSwitchThreshold ? parseInt(autoSwitchThreshold.value, 10) : 200
   };
   await chrome.storage.local.set({ scraperSettings: settings });
   // Notify background
   chrome.runtime.sendMessage({ action: 'UPDATE_SETTINGS', scraperSettings: settings });
 }
 
-if (scraperMethod) scraperMethod.addEventListener('change', saveScraperSettings);
+function updateScraperPanelVisibility(method) {
+  if (firecrawlConfig) {
+    firecrawlConfig.style.display = method === 'firecrawl' ? 'block' : 'none';
+  }
+}
+
+if (scraperMethod) scraperMethod.addEventListener('change', (e) => {
+  updateScraperPanelVisibility(e.target.value);
+  saveScraperSettings();
+});
+
 if (toggleSiteContext) toggleSiteContext.addEventListener('change', saveScraperSettings);
+if (firecrawlApiKey) firecrawlApiKey.addEventListener('input', saveScraperSettings);
+if (toggleAutoSwitch) toggleAutoSwitch.addEventListener('change', (e) => {
+  if (autoSwitchConfig) autoSwitchConfig.style.display = e.target.checked ? 'block' : 'none';
+  saveScraperSettings();
+});
+if (autoSwitchThreshold) autoSwitchThreshold.addEventListener('input', saveScraperSettings);
 
 // ── UI Preference Logic ─────────────────────────────────────────────
 
@@ -465,6 +498,8 @@ function renderList(bookmarks) {
       statusMatch = (b.extractionStatus === 'success');
     } else if (selectedFilter === 'captured') {
       statusMatch = !!(b.captureStatus && (b.captureStatus === 'created' || b.captureStatus === 'updated'));
+    } else if (selectedFilter === 'junk') {
+      statusMatch = (b.extractionStatus === 'junk');
     } else if (selectedFilter === 'uncaptured') {
       statusMatch = (b.extractionStatus === 'success' && !b.captureStatus);
     } else if (selectedFilter !== 'all') {
@@ -556,6 +591,10 @@ function renderList(bookmarks) {
           <div style="margin-top: 6px; display: flex; gap: 4px; flex-wrap: wrap;">
             <button class="btn-row-recheck" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;">Recheck</button>
             <button class="btn-row-extract" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px;" ${canExtract ? '' : 'disabled'}>Extract Content</button>
+            ${(canExtract && !b.isFile) ? `
+              <button class="btn-row-retry-jina" data-id="${b.id}" title="Retry with Jina Reader" style="font-size: 10px; padding: 2px 6px; background-color: #fff9db; border: 1px solid #f08c00; border-radius: 4px; color: #f08c00;">Jina</button>
+              <button class="btn-row-retry-firecrawl" data-id="${b.id}" title="Retry with Firecrawl" style="font-size: 10px; padding: 2px 6px; background-color: #fff0f6; border: 1px solid #d6336c; border-radius: 4px; color: #d6336c;">Firecrawl</button>
+            ` : ''}
             <button class="btn-row-capture" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #e6fcf5; border: 1px solid #0a7a3b; border-radius: 4px; color: #0a7a3b;" ${(hasExtraction || b.isFile) ? '' : 'disabled'}>Capture</button>
             ${b.isFile ? `
               <button class="btn-row-push-file" data-id="${b.id}" style="font-size: 10px; padding: 2px 6px; background-color: #fff9db; border: 1px solid #f08c00; border-radius: 4px; color: #f08c00;">Push Binary to Obsidian</button>
@@ -651,6 +690,43 @@ async function pushFileToObsidian(id, btn) {
   }
 }
 
+async function retryExtractionWithOverride(id, engine, btn) {
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '...';
+  
+  try {
+    addLog(`Manual retry for bookmark using ${engine}...`, 'info');
+    // Get latest settings but override method
+    const result = await chrome.storage.local.get('scraperSettings');
+    const settings = result.scraperSettings || {};
+    const overrideSettings = { ...settings, method: engine, autoSwitch: false };
+    
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'EXTRACT_SINGLE', 
+      id: id,
+      scraperSettings: overrideSettings
+    });
+    
+    if (response && response.status === 'success') {
+      addLog(`Manual retry with ${engine} successful!`, 'success');
+      // Update local state
+      const bIdx = currentBookmarks.findIndex(bk => bk.id === id);
+      if (bIdx !== -1) {
+        currentBookmarks[bIdx] = response.bookmark;
+        renderList(currentBookmarks);
+      }
+    } else {
+      addLog(`Manual retry failed: ${response?.message}`, 'error');
+    }
+  } catch (err) {
+    addLog(`Manual retry error: ${err.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 function attachRowListeners() {
   // Attach Download Listeners (Local)
   document.querySelectorAll('.btn-row-download').forEach(btn => {
@@ -718,6 +794,19 @@ function attachRowListeners() {
         e.target.disabled = false;
         e.target.textContent = 'Extract Content';
       }
+    });
+  });
+
+  // Attach Retry Listeners
+  document.querySelectorAll('.btn-row-retry-jina').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      retryExtractionWithOverride(e.target.getAttribute('data-id'), 'jina', e.target);
+    });
+  });
+
+  document.querySelectorAll('.btn-row-retry-firecrawl').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      retryExtractionWithOverride(e.target.getAttribute('data-id'), 'firecrawl', e.target);
     });
   });
 
