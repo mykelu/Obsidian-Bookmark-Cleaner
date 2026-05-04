@@ -1,9 +1,19 @@
-/**
- * Offscreen Document Script
- * Handles secure fetching and DOM parsing for content extraction.
- */
-
 import { extractContent } from '../content/extractors/readability.js';
+
+// Dynamically import pdf.js to avoid loading it for non-PDF extractions
+let pdfjsLib = null;
+
+async function initPdfJs() {
+  if (pdfjsLib) return pdfjsLib;
+  try {
+    pdfjsLib = await import('../lib/vendor/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = chrome.runtime.getURL('src/lib/vendor/pdf.worker.min.mjs');
+    return pdfjsLib;
+  } catch (err) {
+    console.error('[Offscreen] Failed to load pdf.js:', err);
+    throw new Error('PDF library failed to load.');
+  }
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target === 'offscreen' && message.action === 'EXTRACT_CONTENT') {
@@ -52,6 +62,36 @@ async function handleMetadataExtraction(url) {
   }
 }
 
+async function extractTextFromPdf(url) {
+  const lib = await initPdfJs();
+  const loadingTask = lib.getDocument(url);
+  const pdf = await loadingTask.promise;
+  
+  let fullText = '';
+  let markdown = `## PDF Document: ${url.split('/').pop()}\n\n`;
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    
+    fullText += pageText + '\n\n';
+    markdown += `### Page ${i}\n${pageText}\n\n`;
+    
+    // Add progress or limit for extremely long PDFs
+    if (i > 50) {
+      markdown += `\n> [!NOTE]\n> Extraction truncated at 50 pages for performance.\n`;
+      break;
+    }
+  }
+  
+  return {
+    markdown,
+    plainText: fullText,
+    numPages: pdf.numPages
+  };
+}
+
 async function handleExtraction(url) {
   const response = await fetch(url);
   if (!response.ok) {
@@ -68,15 +108,49 @@ async function handleExtraction(url) {
                    contentType.includes('application/msword') ||
                    contentType.includes('application/vnd.openxmlformats-officedocument');
 
-  if (isPdf || isBinary) {
+  if (isPdf) {
+    try {
+      const filename = finalFetchedUrl.split('/').pop() || 'Document.pdf';
+      const pdfData = await extractTextFromPdf(finalFetchedUrl);
+      
+      return {
+        title: filename,
+        extractionStatus: 'success',
+        isFile: true,
+        isPdf: true,
+        contentType: contentType,
+        markdown: pdfData.markdown,
+        plainText: pdfData.plainText,
+        metadata: {
+          numPages: pdfData.numPages
+        }
+      };
+    } catch (err) {
+      console.warn('[Offscreen] PDF extraction failed, falling back to shell:', err);
+      // Fallback to basic file info if parsing fails
+      const filename = finalFetchedUrl.split('/').pop() || 'Downloaded File';
+      return {
+        title: filename,
+        extractionStatus: 'file',
+        isFile: true,
+        isPdf: true,
+        contentType: contentType,
+        markdown: `## PDF Detected (Extraction Failed)\n\n**Source**: [${filename}](${finalFetchedUrl})\n**Type**: ${contentType}\n\n> [!WARNING]\n> Local PDF extraction failed: ${err.message}. You can download the file or try a cloud scraper.`,
+        plainText: `PDF detected: ${finalFetchedUrl}. Extraction failed.`,
+        extractionWarnings: [`PDF parsing error: ${err.message}`]
+      };
+    }
+  }
+
+  if (isBinary) {
     const filename = finalFetchedUrl.split('/').pop() || 'Downloaded File';
     return {
       title: filename,
       extractionStatus: 'file',
       isFile: true,
-      isPdf: isPdf,
+      isPdf: false,
       contentType: contentType,
-      markdown: `## Binary File Detected\n\n**Source**: [${filename}](${finalFetchedUrl})\n**Type**: ${contentType}\n\n> [!NOTE]\n> Standard extraction does not support binary files. You can download this file directly or use Jina Reader for PDF-to-Markdown conversion.`,
+      markdown: `## Binary File Detected\n\n**Source**: [${filename}](${finalFetchedUrl})\n**Type**: ${contentType}\n\n> [!NOTE]\n> Standard extraction does not support non-PDF binary files. You can download this file directly.`,
       plainText: `Binary file detected: ${finalFetchedUrl} (${contentType})`,
       extractionWarnings: [`Detected binary file type: ${contentType}`]
     };
