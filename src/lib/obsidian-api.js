@@ -186,13 +186,18 @@ export async function searchNotes(baseUrl, apiKey, query) {
 export async function scaffoldVault(baseUrl, apiKey, preset = 'PARA') {
   const folders = {
     'PARA': [
-      '00-Inbox',
-      '10-Projects',
-      '20-Areas',
-      '30-Resources',
-      '40-Archives',
-      '50-System/Templates',
-      '50-System/Assets'
+      '00-inbox',
+      '01-projects',
+      '02-areas',
+      '03-resources',
+      '04-archive',
+      '05-wiki',
+      '07-daily',
+      '08-gtd',
+      '09-ai-os',
+      '10-templates',
+      '11-agent-memory',
+      '99-meta'
     ],
     'SIMPLE': [
       'Inbox',

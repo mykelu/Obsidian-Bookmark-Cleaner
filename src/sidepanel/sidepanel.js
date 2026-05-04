@@ -177,7 +177,7 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
   if (result.obsidianSettings) {
     if (obsUrlInput) obsUrlInput.value = result.obsidianSettings.baseUrl || 'https://127.0.0.1:27124';
     if (obsKeyInput) obsKeyInput.value = result.obsidianSettings.apiKey || '';
-    if (obsFolderInput) obsFolderInput.value = result.obsidianSettings.destinationFolder || '03 Resources/Web Clips/Bookmarks/';
+    if (obsFolderInput) obsFolderInput.value = result.obsidianSettings.destinationFolder || '03-resources/Web Clips/Bookmarks/';
     if (obsTemplateInput) obsTemplateInput.value = result.obsidianSettings.filenameTemplate || '{title}.md';
     if (toggleVaultAware) toggleVaultAware.checked = !!result.obsidianSettings.enableVaultAwareLinking;
   }
@@ -323,7 +323,12 @@ async function updateAIStatus() {
       aiStatusBadge.textContent = 'Downloading...';
       aiStatusBadge.style.background = '#fef9c3';
       aiStatusBadge.style.color = '#854d0e';
-      if (aiSetupWarning) aiSetupWarning.style.display = 'none';
+      if (aiSetupWarning) {
+        aiSetupWarning.style.display = 'block';
+        aiSetupWarning.style.background = '#fef9c3';
+        aiSetupWarning.style.borderColor = '#fde047';
+        aiSetupWarning.innerHTML = `<div style="font-weight: 700; color: #854d0e;">⏳ ${response.message}</div>`;
+      }
       if (aiDownloadProgress) aiDownloadProgress.style.display = 'block';
       // Poll until ready
       setTimeout(updateAIStatus, 5000);
@@ -331,7 +336,19 @@ async function updateAIStatus() {
       aiStatusBadge.textContent = 'Setup Required';
       aiStatusBadge.style.background = '#fee2e2';
       aiStatusBadge.style.color = '#991b1b';
-      if (aiSetupWarning) aiSetupWarning.style.display = 'block';
+      if (aiSetupWarning) {
+        aiSetupWarning.style.display = 'block';
+        aiSetupWarning.style.background = '#fdf2f2';
+        aiSetupWarning.style.borderColor = '#fee2e2';
+        aiSetupWarning.innerHTML = `
+          <div style="font-weight: 700; color: #991b1b; margin-bottom: 4px;">⚠️ ${response.message}</div>
+          <p style="margin: 0; color: #b91c1c; line-height: 1.4;">
+            1. Enable <code>chrome://flags/#prompt-api-for-gemini-nano</code><br>
+            2. Enable <code>chrome://flags/#optimization-guide-on-device-model</code> (Set to "Enabled BypassPerfRequirement")<br>
+            3. Check <code>chrome://on-device-internals</code> for model status.<br>
+            4. If missing, check <code>chrome://components</code> for "Optimization Guide" updates.
+          </p>`;
+      }
     }
   });
 }

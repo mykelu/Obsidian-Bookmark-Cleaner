@@ -4,28 +4,38 @@
  */
 
 export async function getAIStatus() {
-  if (typeof self === 'undefined' || !('ai' in self)) {
+  const isSecure = self.isSecureContext;
+  if (!isSecure) {
+    return { available: 'no', message: 'AI APIs require a secure context (HTTPS/Extension).' };
+  }
+
+  // Check for the new namespaces
+  const aiNamespace = self.ai || (typeof LanguageModel !== 'undefined' ? { languageModel: LanguageModel } : null);
+
+  if (!aiNamespace) {
     return { 
       available: 'no', 
-      message: 'Built-in AI not supported. Requires Chrome 127+ and AI flags enabled.' 
+      message: 'Built-in AI not found. Ensure Chrome is updated and flags are enabled.' 
     };
   }
   
   try {
-    const summarizerCaps = await self.ai.summarizer.capabilities();
-    const modelCaps = await self.ai.languageModel.capabilities();
+    const summarizerCaps = await aiNamespace.summarizer?.capabilities() || { available: 'no' };
+    const modelCaps = await aiNamespace.languageModel?.capabilities() || { available: 'no' };
     
-    if (summarizerCaps.available === 'no' || modelCaps.available === 'no') {
+    console.log('[OnboardAI] Capabilities:', { summarizer: summarizerCaps.available, model: modelCaps.available });
+
+    if (summarizerCaps.available === 'no' && modelCaps.available === 'no') {
       return { 
         available: 'no', 
-        message: 'AI APIs are present but models are disabled. Check chrome://flags.' 
+        message: 'AI models disabled. Check chrome://components for "Optimization Guide".' 
       };
     }
     
     if (summarizerCaps.available === 'after-download' || modelCaps.available === 'after-download') {
       return { 
         available: 'downloadable', 
-        message: 'Gemini Nano models need to be downloaded by Chrome.' 
+        message: 'Model is downloading. Check chrome://components for progress.' 
       };
     }
     
