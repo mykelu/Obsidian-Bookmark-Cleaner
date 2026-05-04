@@ -130,6 +130,9 @@ const dashboardHealthActions = document.getElementById('dashboard-health-actions
 const dashboardHealthSimple = document.getElementById('dashboard-health-simple');
 const btnHealthCheckSimple = document.getElementById('btn-health-check-simple');
 
+const scraperMethod = document.getElementById('scraper-method');
+const toggleSiteContext = document.getElementById('toggle-site-context');
+
 const diagResultsContainer = document.getElementById('diagnostic-results');
 const diagList = document.getElementById('diagnostic-list');
 const diagSummary = document.getElementById('diagnostic-summary');
@@ -152,6 +155,12 @@ chrome.storage.local.get(['obsidianSettings', 'uiPrefs'], (result) => {
     if (obsFolderInput) obsFolderInput.value = result.obsidianSettings.destinationFolder || '03 Resources/Web Clips/Bookmarks/';
     if (obsTemplateInput) obsTemplateInput.value = result.obsidianSettings.filenameTemplate || '{title}.md';
   }
+  
+  if (result.scraperSettings) {
+    if (scraperMethod) scraperMethod.value = result.scraperSettings.method || 'standard';
+    if (toggleSiteContext) toggleSiteContext.checked = !!result.scraperSettings.extractSiteContext;
+  }
+  
   if (result.uiPrefs) {
     refreshUIByPrefs(result.uiPrefs);
   }
@@ -212,8 +221,22 @@ if (btnGoToScanAction) btnGoToScanAction.addEventListener('click', () => switchT
 if (btnGoToReviewAction) btnGoToReviewAction.addEventListener('click', () => switchTab('review'));
 if (btnSaveObsidian) btnSaveObsidian.addEventListener('click', () => {
   saveObsidianSettings();
-  addLog('Obsidian settings saved.', 'success');
+  saveScraperSettings();
+  addLog('Settings saved.', 'success');
 });
+
+async function saveScraperSettings() {
+  const settings = {
+    method: scraperMethod ? scraperMethod.value : 'standard',
+    extractSiteContext: toggleSiteContext ? toggleSiteContext.checked : false
+  };
+  await chrome.storage.local.set({ scraperSettings: settings });
+  // Notify background
+  chrome.runtime.sendMessage({ action: 'UPDATE_SETTINGS', scraperSettings: settings });
+}
+
+if (scraperMethod) scraperMethod.addEventListener('change', saveScraperSettings);
+if (toggleSiteContext) toggleSiteContext.addEventListener('change', saveScraperSettings);
 
 // ── UI Preference Logic ─────────────────────────────────────────────
 

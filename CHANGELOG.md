@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-05-04
+### Fixed
+- **CSP Violations**: Fixed an issue where scraping certain websites would trigger Content Security Policy errors in the background. Added HTML sanitization to strip script and link tags before parsing.
+
+## [1.2.0] - 2026-05-04
+### Added
+- **Advanced Scraping Engines**: You can now choose between "Standard" (local) and "Jina Reader" (external) extraction. Jina Reader handles complex JavaScript sites and provides superior Markdown.
+- **Site Context Discovery**: New option to automatically extract metadata from the root domain (homepage). This helps you understand the source of a bookmark for better planning and categorization.
+- **Scraper Settings**: Dedicated configuration area in the Settings tab for extraction preferences.
+
 ## [1.1.19] - 2026-05-04
 ### Added
 - **Persistent Selection**: Bookmark selections now stay checked after bulk extraction, so you can immediately "Capture to Obsidian" without re-selecting everything.

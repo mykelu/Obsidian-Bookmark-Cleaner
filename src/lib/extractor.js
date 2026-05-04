@@ -37,10 +37,14 @@ export async function setupOffscreenDocument() {
 /**
  * Sends a message to the offscreen document to fetch and parse the URL.
  */
-export async function extractContentFromUrl(url) {
+export async function extractContentFromUrl(url, scraperSettings = { method: 'standard', extractSiteContext: false }) {
+  if (scraperSettings.method === 'jina') {
+    return extractWithJina(url, scraperSettings.extractSiteContext);
+  }
+
   await setupOffscreenDocument();
   
-  return new Promise((resolve, reject) => {
+  const data = await new Promise((resolve, reject) => {
     chrome.runtime.sendMessage({
       target: 'offscreen',
       action: 'EXTRACT_CONTENT',
@@ -57,6 +61,67 @@ export async function extractContentFromUrl(url) {
       }
     });
   });
+
+  if (scraperSettings.extractSiteContext && data) {
+    data.siteContext = await fetchSiteContext(url);
+  }
+
+  return data;
+}
+
+async function extractWithJina(url, extractContext = false) {
+  const jinaUrl = `https://r.jina.ai/${url}`;
+  const response = await fetch(jinaUrl);
+  if (!response.ok) throw new Error(`Jina Reader Error: ${response.status}`);
+  const markdown = await response.text();
+  
+  const lines = markdown.split('\n');
+  let title = '';
+  if (lines[0].startsWith('# ')) {
+    title = lines[0].substring(2).trim();
+  }
+
+  const data = {
+    title: title || url,
+    markdown: markdown,
+    plainText: markdown.replace(/[#*`\[\]]/g, '').substring(0, 10000),
+    extractionStatus: 'success',
+    extractionWarnings: ['Extracted via Jina Reader proxy']
+  };
+
+  if (extractContext) {
+    data.siteContext = await fetchSiteContext(url);
+  }
+
+  return data;
+}
+
+async function fetchSiteContext(url) {
+  try {
+    const parsed = new URL(url);
+    const rootUrl = `${parsed.protocol}//${parsed.hostname}`;
+    
+    // We'll use the offscreen document for this too, but for simplicity here we'll just do a light fetch
+    // Actually, offscreen is safer for DOM parsing.
+    await setupOffscreenDocument();
+    
+    return new Promise((resolve) => {
+      chrome.runtime.sendMessage({
+        target: 'offscreen',
+        action: 'EXTRACT_METADATA',
+        url: rootUrl
+      }, response => {
+        if (response && response.status === 'success') {
+          resolve(response.data);
+        } else {
+          resolve(null);
+        }
+      });
+    });
+  } catch (e) {
+    console.error('[Extractor] Site context fetch failed:', e);
+    return null;
+  }
 }
 
 /**

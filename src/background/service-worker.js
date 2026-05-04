@@ -21,6 +21,10 @@ const state = {
     destinationFolder: 'Bookmarks',
     filenameTemplate: '{title}.md'
   },
+  scraperSettings: {
+    method: 'standard',
+    extractSiteContext: false
+  },
   isScanning: false,
   isBusy: false, // Prevents concurrent batch operations
   bookmarks: [],
@@ -58,6 +62,12 @@ async function hydrateState() {
         state.activeQueue.paused = true;
         console.log(`[Service Worker] Found in-progress queue (${state.activeQueue.type}), marked as paused`);
       }
+    }
+
+    const scraperData = await chrome.storage.local.get('scraperSettings');
+    if (scraperData.scraperSettings) {
+      state.scraperSettings = scraperData.scraperSettings;
+      console.log('[Service Worker] Hydrated scraper settings:', state.scraperSettings);
     }
   } catch (e) {
     console.error('[Service Worker] State hydration failed:', e);
@@ -170,7 +180,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  // 2. All other messages wait for hydration to complete
+  if (message.action === 'UPDATE_SETTINGS') {
+    if (message.obsidianSettings) state.settings = { ...state.settings, ...message.obsidianSettings };
+    if (message.scraperSettings) state.scraperSettings = { ...state.scraperSettings, ...message.scraperSettings };
+    sendResponse({ status: 'success' });
+    return false;
+  }
+
+  if (message.action === 'GET_BOOKMARKS') {
+    sendResponse({ status: 'success', bookmarks: state.bookmarks });
+    return false;
+  }
+
+  // 2. Wait for hydration for all other actions to complete
   ensureHydrated().then(() => {
     processMessage(message, sender, sendResponse);
   }).catch(err => {
@@ -403,7 +425,7 @@ function processMessage(message, sender, sendResponse) {
           const urlToExtract = bookmark.finalUrl || bookmark.url;
 
           try {
-            const data = await extractContentFromUrl(urlToExtract);
+            const data = await extractContentFromUrl(urlToExtract, state.scraperSettings);
             bookmark.extractedData = data;
             bookmark.extractionStatus = data.extractionStatus || 'success';
             markDone(state.activeQueue, id);
@@ -588,7 +610,7 @@ function processMessage(message, sender, sendResponse) {
               const bookmark = state.bookmarks.find(b => b.id === id);
               if (bookmark && (bookmark.status === 'healthy' || bookmark.status === 'redirected')) {
                 try {
-                  const data = await extractContentFromUrl(bookmark.finalUrl || bookmark.url);
+                  const data = await extractContentFromUrl(bookmark.finalUrl || bookmark.url, state.scraperSettings);
                   bookmark.extractedData = data;
                   bookmark.extractionStatus = data.extractionStatus || 'success';
                   markDone(state.activeQueue, id);
@@ -691,6 +713,7 @@ function processMessage(message, sender, sendResponse) {
     chrome.alarms.clear('recheck-soft-broken');
     saveAlarmConfig({ enabled: false, intervalMinutes: 1440, lastRun: null });
     sendResponse({ status: 'success' });
+    return false;
   }
 
   if (message.action === 'GET_ALARM_CONFIG') {
