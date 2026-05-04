@@ -671,35 +671,49 @@ function renderList(bookmarks) {
 // Write to Obsidian from note preview modal
 if (btnCaptureFromPreview) {
   btnCaptureFromPreview.addEventListener('click', async () => {
-  if (!notePreviewCurrentId) return;
-  
-  btnCaptureFromPreview.disabled = true;
-  btnCaptureFromPreview.textContent = 'Writing...';
-  
+    if (!notePreviewCurrentId) return;
+    
+    const bookmark = currentBookmarks.find(b => b.id === notePreviewCurrentId);
+    if (!bookmark) return;
+
+    btnCaptureFromPreview.disabled = true;
+    btnCaptureFromPreview.textContent = 'Writing...';
+    addLog(`Capturing ${bookmark.title} from preview...`, 'system');
+    
     try {
-      const response = await chrome.runtime.sendMessage({ action: 'CAPTURE_BATCH', ids: [notePreviewCurrentId] });
-      if (response && response.status === 'success') {
-        const result = response.results[0];
-        if (result.action === 'created' || result.action === 'updated') {
-          addLog(`Note ${result.action}: ${result.notePath}`, 'success');
-        } else if (result.action === 'skipped') {
-          addLog(`Note skipped (unchanged): ${result.notePath}`, 'info');
-        } else {
-          addLog(`Note failed: ${result.reason}`, 'error');
-        }
-        currentBookmarks = response.allBookmarks;
-        renderList(currentBookmarks);
-        notePreviewModal.close();
-      } else if (response) {
-        addLog(`Capture failed: ${response.message}`, 'error');
+      const settings = saveObsidianSettings();
+      const { noteContent, notePath, contentHash, capturedAt } = await buildMarkdownNote(bookmark, settings);
+      
+      let action;
+      const exists = await noteExists(settings.baseUrl, settings.apiKey, notePath);
+      if (exists) {
+        await updateNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+        action = 'updated';
+      } else {
+        await createNote(settings.baseUrl, settings.apiKey, notePath, noteContent);
+        action = 'created';
       }
+
+      // Update local state
+      bookmark.captureStatus = action;
+      bookmark.capturedAt = capturedAt;
+      bookmark.capturedNotePath = notePath;
+      bookmark.capturedContentHash = contentHash;
+      bookmark.captureError = null;
+
+      addLog(`Successfully ${action} note from preview: ${bookmark.title}`, 'success');
+      
+      // Push state update to background storage
+      await chrome.runtime.sendMessage({ action: 'SAVE_BOOKMARKS', bookmarks: currentBookmarks });
+      
+      renderList(currentBookmarks);
+      notePreviewModal.close();
     } catch (err) {
-      addLog(`Capture error: ${err.message}`, 'error');
+      addLog(`Capture failed: ${err.message}`, 'error');
+      btnCaptureFromPreview.disabled = false;
+      btnCaptureFromPreview.textContent = 'Write to Obsidian';
     }
-  
-  btnCaptureFromPreview.disabled = false;
-  btnCaptureFromPreview.textContent = 'Write to Obsidian';
-});
+  });
 }
 
 // Bulk Extract logic

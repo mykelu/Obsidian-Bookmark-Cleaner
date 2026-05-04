@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.16] - 2026-05-04
+### Fixed
+- **Sync Reliability**: Added `SAVE_BOOKMARKS` listener to fix the "message channel closed" error during captures.
+- **Preview Capture**: Refactored the "Write to Obsidian" button in the preview modal to use the UI-direct method for better SSL reliability.
+
 ## [1.1.15] - 2026-05-03
 ### Changed
 - **Capture Reliability**: Individual "Capture" and "Create Sample Note" buttons now run in the UI context. This fixes the "Failed to fetch" error caused by Chrome blocking background connections to self-signed Obsidian certificates.

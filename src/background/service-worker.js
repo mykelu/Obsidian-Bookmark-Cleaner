@@ -139,6 +139,16 @@ chrome.sidePanel
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // 1. Handle HEALTH_CHECK immediately (don't wait for hydration)
+  if (message.action === 'SAVE_BOOKMARKS') {
+    state.bookmarks = message.bookmarks;
+    saveBookmarksNow(state.bookmarks).then(() => {
+      sendResponse({ status: 'success' });
+    }).catch(err => {
+      sendResponse({ status: 'error', message: err.toString() });
+    });
+    return true;
+  }
+
   if (message.action === 'HEALTH_CHECK') {
     const pendingJobs = (state.activeQueue && state.activeQueue.items) ? (state.activeQueue.items.length - state.activeQueue.cursor) : 0;
     sendResponse({
